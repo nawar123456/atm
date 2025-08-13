@@ -1,0 +1,32 @@
+# Python Files
+*.py[cod]
+
+# Django Files
+db.sqlite3
+__pycache__/
+
+# Virtual Environment
+/myenv/
+
+# Media Files
+media/
+
+# Configuration Files
+.env
+
+# IDE Files
+.idea/
+.vscode/
+
+# Log Files
+*.log
+
+# Temporary Files
+*.tmp
+
+# Postman Collection (if not needed in the repository)
+ATM.postman_collection
+
+# Other Files
+.DS_Store
+Thumbs.db
