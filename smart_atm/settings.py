@@ -11,7 +11,8 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 from datetime import timedelta
 from pathlib import Path
-
+import dj_database_url
+import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,9 +21,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-o3)=n3vo9&&4&@#g1gs(evp9-8yeaw91nr#s^lswd@iy(yhpal'
-
+# SECRET_KEY = 'django-insecure-o3)=n3vo9&&4&@#g1gs(evp9-8yeaw91nr#s^lswd@iy(yhpal'
+# SECRET_KEY = os.environ['SECRET_KEY']  # بدون fallback في الإنتاج
 # SECURITY WARNING: don't run with debug turned on in production!
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-change-in-production')
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
@@ -84,14 +86,15 @@ WSGI_APPLICATION = 'smart_atm.wsgi.application'
 # }
 
 DATABASES = {
-     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'ATM',
-        'HOST': '127.0.0.1',
-        'USER': 'root',
-        'PORT': '3306',
-        'PASSWORD': 'password'
-    }
+     'default': dj_database_url.parse(os.get("DATABASE_URL"))
+        # 'ENGINE': 'django.db.backends.mysql',
+        # 'NAME': 'ATM',
+        # 'HOST': '127.0.0.1',
+        # 'USER': 'root',
+        # 'PORT': '3306',
+        # 'PASSWORD': 'password'
+    
+# postgresql://nawar:s1P8LVoB89IIRl8RDO8TICeCA4TrtKFK@dpg-d2ei6cqdbo4c738fjc20-a/test_ioi8
 }
 
 # Password validation
