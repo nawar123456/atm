@@ -85,18 +85,29 @@ WSGI_APPLICATION = 'smart_atm.wsgi.application'
 #     }
 # }
 
-DATABASES = {
-     'default': dj_database_url.parse(os.get("DATABASE_URL"))
-        # 'ENGINE': 'django.db.backends.mysql',
-        # 'NAME': 'ATM',
-        # 'HOST': '127.0.0.1',
-        # 'USER': 'root',
-        # 'PORT': '3306',
-        # 'PASSWORD': 'password'
+# DATABASES = {
+# 'default': dj_database_url.parse(os.environ.get("DATABASE_URL"))        # 'ENGINE': 'django.db.backends.mysql',
+#         # 'NAME': 'ATM',
+#         # 'HOST': '127.0.0.1',
+#         # 'USER': 'root',
+#         # 'PORT': '3306',
+#         # 'PASSWORD': 'password'
     
-# postgresql://nawar:s1P8LVoB89IIRl8RDO8TICeCA4TrtKFK@dpg-d2ei6cqdbo4c738fjc20-a/test_ioi8
-}
+# # postgresql://nawar:s1P8LVoB89IIRl8RDO8TICeCA4TrtKFK@dpg-d2ei6cqdbo4c738fjc20-a/test_ioi8
+# }
 
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        'default': dj_database_url.parse(os.environ.get("DATABASE_URL"))
+    }
+    DATABASES['default']['ENGINE'] = 'django.db.backends.postgresql'
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
@@ -131,8 +142,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
-
+# STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # مكان جمع الملفات
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
