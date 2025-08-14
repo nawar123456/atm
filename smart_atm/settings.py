@@ -29,7 +29,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 AUTH_USER_MODEL = 'core.User'
-
+CSRF_TRUSTED_ORIGINS = [
+    'https://atm-1o2e.onrender.com',
+    'https://atm-1o2e.onrender.com',  # نكرره لضمان الأمان
+]
 
 # Application definition
 
