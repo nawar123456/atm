@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth import get_user_model
 from .models import User, CardDetail, Transaction, DigitalSignature
+from .models import DeliveryLocation
 
 # --- 1. إدارة المستخدمين ---
 class UserAdmin(BaseUserAdmin):
@@ -101,7 +102,11 @@ class TransactionAdmin(admin.ModelAdmin):
     #         'fields': ('timestamp',)
     #     }),
     # )
-
+@admin.register(DeliveryLocation)
+class DeliveryLocationAdmin(admin.ModelAdmin):
+    list_display = ('delivery_agent', 'latitude', 'longitude', 'updated_at')
+    search_fields = ('delivery_agent__email',)
+    list_filter = ('updated_at',)
 
 # --- 4. إدارة التوقيع الرقمي ---
 @admin.register(DigitalSignature)

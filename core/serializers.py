@@ -3,10 +3,32 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction as db_transaction
-from .models import User, CardDetail, Transaction, DigitalSignature
+from .models import User, CardDetail, Transaction, DigitalSignature,DeliveryLocation
 from decimal import Decimal
+from datetime import datetime
+import re
+import math
 
 User = get_user_model()
+def haversine_distance(lat1, lon1, lat2, lon2):
+    """
+    حساب المسافة بين نقطتين (lat, lon) بالكيلومتر.
+    """
+    R = 6371  # نصف قطر الأرض
+
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+
+    a = math.sin(dphi / 2) ** 2 + \
+        math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    return R * c
+
+
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -28,11 +50,49 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
+
 class CardDetailSerializer(serializers.ModelSerializer):
+    
+    # الحقول المطلوبة لإنشاء البطاقة
+    card_number = serializers.CharField(write_only=True, max_length=19)
+    expiry = serializers.DateField()  # توقع تاريخ كامل
+
     class Meta:
         model = CardDetail
-        fields = ['id', 'last_four', 'expiry', 'cardholder_name']
+        fields = [
+            'id', 'card_number', 'expiry', 'cardholder_name',
+            'last_four', 'balance'
+        ]
+        # read_only_fields = ['last_four', 'balance']
 
+    # def validate_card_number(self, value):
+    #     cleaned = value.replace(' ', '').replace('-', '')
+    #     if not re.match(r'^\d{13,19}$', cleaned):
+    #         raise serializers.ValidationError("رقم البطاقة غير صالح.")
+    #     return cleaned
+
+  
+
+    def create(self, validated_data):
+        card_number = validated_data.pop('card_number')
+        # expiry_str = validated_data.pop('expiry')
+
+        # تحويل MM/YY إلى تاريخ
+        # month, year = map(int, expiry_str.split('/'))
+        # full_year = 2000 + year if year < 50 else 1900 + year
+        # expiry_date = datetime(full_year, month, 1).date()
+
+        # استخراج آخر 4 أرقام
+        last_four = card_number[-4:]
+
+        # إنشاء البطاقة
+        card = CardDetail.objects.create(
+            # user=self.context['request'].user,
+            last_four=last_four,
+            # expiry=expiry,
+            **validated_data
+        )
+        return card
 
 class TransactionSerializer(serializers.ModelSerializer):
     recipient_id = serializers.IntegerField(write_only=True, required=False)
@@ -67,7 +127,8 @@ class TransactionSerializer(serializers.ModelSerializer):
             'sender_longitude',
             'recipient_latitude',
             'recipient_longitude',
-            'timestamp'
+            'timestamp',
+            'delivery_agent'
         ]
         read_only_fields = ['timestamp']
 
@@ -163,7 +224,26 @@ class TransactionSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("حقلَي 'sender_latitude' و'sender_longitude' مطلوبان (مكان الإيداع).")
         else:
             raise serializers.ValidationError("نوع المعاملة غير صالح.")
+        
+        closest_delivery_agent = None
+        min_distance = None
+        if recipient_lat and recipient_lng:
+            delivery_locations = DeliveryLocation.objects.select_related('delivery_agent').all()
 
+            for location in delivery_locations:
+                if not location.delivery_agent.is_approved:
+                    continue
+
+                distance = haversine_distance(
+                    float(recipient_lat),
+                    float(recipient_lng),
+                    float(location.latitude),
+                    float(location.longitude)
+                )
+
+                if min_distance is None or distance < min_distance:
+                    min_distance = distance
+                    closest_delivery_agent = location.delivery_agent
         # ✅ استخدام المعاملات (atomic) لضمان الأمان
         with db_transaction.atomic():
             # ✅ خصم المبلغ من بطاقة المرسل
@@ -191,6 +271,8 @@ class TransactionSerializer(serializers.ModelSerializer):
                 sender_longitude=sender_lng,
                 recipient_latitude=recipient_lat,
                 recipient_longitude=recipient_lng,
+                delivery_agent=closest_delivery_agent  # 💥 هنا التعيين التلقائي
+
             )
 
         return transaction

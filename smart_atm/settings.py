@@ -89,14 +89,17 @@ WSGI_APPLICATION = 'smart_atm.wsgi.application'
 # }
 
 # DATABASES = {
-# 'default': dj_database_url.parse(os.environ.get("DATABASE_URL"))        # 'ENGINE': 'django.db.backends.mysql',
-#         # 'NAME': 'ATM',
-#         # 'HOST': '127.0.0.1',
-#         # 'USER': 'root',
-#         # 'PORT': '3306',
-#         # 'PASSWORD': 'password'
+#     # 'default': dj_database_url.parse(os.environ.get("DATABASE_URL"))  
+#      'default': {
+#       'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'ATM',
+#         'HOST': '127.0.0.1',
+#         'USER': 'root',
+#         'PORT': '3306',
+#         'PASSWORD': 'password'
     
 # # postgresql://nawar:s1P8LVoB89IIRl8RDO8TICeCA4TrtKFK@dpg-d2ei6cqdbo4c738fjc20-a/test_ioi8
+# }
 # }
 
 if os.environ.get("DATABASE_URL"):

@@ -96,7 +96,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsApprovedUser]
     # http_method_names = ['get', 'head', 'options']
 
     def get_queryset(self):
@@ -109,7 +109,15 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         if status_filter:
             queryset = queryset.filter(status=status_filter)
         return queryset
-
+    @action(detail=True, methods=['get'], url_path='cards', permission_classes=[IsApprovedUser])
+    def user_cards(self, request, pk=None):
+        """
+        إرجاع جميع البطاقات الخاصة بالمستخدم
+        """
+        user = self.get_object()
+        cards = CardDetail.objects.filter(user=user)
+        serializer = CardDetailSerializer(cards, many=True)
+        return Response(serializer.data)
     @action(detail=True, methods=['post'], url_path='change_status')
     def change_status(self, request, pk=None):
         user = self.get_object()
@@ -129,11 +137,13 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 # ================================
 # 4. إدارة البطاقات
 # ================================
+
 class CardDetailViewSet(viewsets.ModelViewSet):
     """
-    عرض بطاقات المستخدم فقط.
-    لا يمكن إنشاء بطاقة من هنا.
+    عرض وإنشاء بطاقات المستخدم.
+    
     """
+    
     serializer_class = CardDetailSerializer
     permission_classes = [IsAuthenticated]
 
@@ -141,8 +151,8 @@ class CardDetailViewSet(viewsets.ModelViewSet):
         return CardDetail.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        raise PermissionError("لا يمكن إضافة بطاقة من خلال هذه الواجهة.")
-
+        # ✅ السماح بإنشاء البطاقة
+        serializer.save(user=self.request.user)
 
 # ================================
 # 5. المعاملات (سحب، إيداع، تحويل)
@@ -155,7 +165,34 @@ class TransactionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsApprovedUser]
 
     def get_queryset(self):
-        user = self.request.user
+                return Transaction.objects.filter(user=self.request.user)
+
+        
+    @action(detail=False, methods=['get'], url_path='credit')
+    def credit_transactions(self, request):
+        """
+        إرجاع جميع المعاملات التي زادت رصيد المستخدم
+        """
+        credit_types = ['receive_money', 'deposit']
+        transactions = Transaction.objects.filter(
+            user=request.user,
+            transaction_type__in=credit_types
+        )
+        serializer = self.get_serializer(transactions, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='debit')
+    def debit_transactions(self, request):
+        """
+        إرجاع جميع المعاملات التي نقصت رصيد المستخدم
+        """
+        debit_types = ['send_money', 'withdrawal']
+        transactions = Transaction.objects.filter(
+            user=request.user,
+            transaction_type__in=debit_types
+        )
+        serializer = self.get_serializer(transactions, many=True)
+        return Response(serializer.data)
 
     # ✅ إذا كان مندوب تسليم، يرى جميع المعاملات بحالة 'pending'
         if hasattr(user, 'role') and user.role == 'delivery':
