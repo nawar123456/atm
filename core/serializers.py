@@ -278,6 +278,23 @@ class TransactionSerializer(serializers.ModelSerializer):
         return transaction
 
 
+class DeliveryLocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeliveryLocation
+        fields = ['latitude', 'longitude', 'updated_at']
+        read_only_fields = ['updated_at']
+
+    def validate_latitude(self, value):
+        if value < -90 or value > 90:
+            raise serializers.ValidationError("قيمة العرض الجغرافي غير صالحة.")
+        return value
+
+    def validate_longitude(self, value):
+        if value < -180 or value > 180:
+            raise serializers.ValidationError("قيمة الطول الجغرافي غير صالحة.")
+        return value
+
+
 class DigitalSignatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = DigitalSignature

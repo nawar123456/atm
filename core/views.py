@@ -8,9 +8,11 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
+from decimal import Decimal
+from django.core.exceptions import ValidationError
 
-# --- النماذج ---
-from .models import User, CardDetail, Transaction, DigitalSignature
+# --- النماذج ---from .serializers import DeliveryLocationSerializer
+from .models import User, CardDetail, Transaction, DigitalSignature,DeliveryLocation
 
 # --- السيريالايزر ---
 from .serializers import (
@@ -18,6 +20,7 @@ from .serializers import (
     CardDetailSerializer,
     TransactionSerializer,
     DigitalSignatureSerializer,
+    DeliveryLocationSerializer
 )
 
 # --- الصلاحيات المخصصة ---
@@ -70,6 +73,27 @@ class LoginView(APIView):
                 {"error": "البريد الإلكتروني أو كلمة المرور غير صحيحة"},
                 status=status.HTTP_401_UNAUTHORIZED
             )
+        lat = request.data.get("latitude")
+        lng = request.data.get("longitude")
+
+        # فقط للمندوبين وبوجود إحداثيات صالحة
+        if user.role == 'delivery' and lat is not None and lng is not None:
+            try:
+                lat = Decimal(str(lat))
+                lng = Decimal(str(lng))
+                if lat < -90 or lat > 90 or lng < -180 or lng > 180:
+                    raise ValidationError("Invalid lat/lng")
+            except Exception:
+                return Response(
+                    {"error": "إحداثيات غير صالحة"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # ✅ تخزين/تحديث موقع المندوب (upsert)
+            DeliveryLocation.objects.update_or_create(
+                delivery_agent=user,
+                defaults={"latitude": lat, "longitude": lng}
+            )
 
         refresh = RefreshToken.for_user(user)
         return Response({
@@ -84,7 +108,7 @@ class LoginView(APIView):
                 'full_name': user.get_full_name() or user.username
             }
         })
-
+        
 
 # ================================
 # 3. إدارة المستخدمين (للإدارة فقط)
@@ -134,9 +158,30 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({'status': f'تم تحديث الحالة إلى {new_status}'})
 
 
+
+
+class DeliveryLocationViewSet(viewsets.ModelViewSet):
+    """
+    مندوب التسليم يُحدّث موقعه الجغرافي.
+    الموقع يُربط تلقائيًا بـ request.user.
+    """
+    serializer_class = DeliveryLocationSerializer
+    permission_classes = [IsAuthenticated, IsDeliveryStaff]
+
+    def get_queryset(self):
+        # فقط موقع المستخدم الحالي
+        return DeliveryLocation.objects.filter(delivery_agent=self.request.user)
+
+    def perform_create(self, serializer):
+        # ربط الموقع بالمندوب تلقائيًا
+        serializer.save(delivery_agent=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(delivery_agent=self.request.user)
 # ================================
 # 4. إدارة البطاقات
 # ================================
+
 
 class CardDetailViewSet(viewsets.ModelViewSet):
     """
