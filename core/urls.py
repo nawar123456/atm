@@ -12,6 +12,7 @@ router = DefaultRouter()
 router.register(r'users', views.UserViewSet, basename='user')
 router.register(r'transactions', views.TransactionViewSet, basename='transaction')
 router.register(r'cards', views.CardDetailViewSet, basename='card')
+router.register(r'delivery-locations', views.DeliveryLocationViewSet, basename='delivery-location')
 
 # قائمة الـ URLs
 urlpatterns = [

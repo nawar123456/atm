@@ -88,32 +88,32 @@ WSGI_APPLICATION = 'smart_atm.wsgi.application'
 #     }
 # }
 
-DATABASES = {
-    # 'default': dj_database_url.parse(os.environ.get("DATABASE_URL"))  
-     'default': {
-      'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'ATM',
-        'HOST': '127.0.0.1',
-        'USER': 'root',
-        'PORT': '3306',
-        'PASSWORD': 'password'
+# DATABASES = {
+#     # 'default': dj_database_url.parse(os.environ.get("DATABASE_URL"))  
+#      'default': {
+#       'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'ATM',
+#         'HOST': '127.0.0.1',
+#         'USER': 'root',
+#         'PORT': '3306',
+#         'PASSWORD': 'password'
     
-# postgresql://nawar:s1P8LVoB89IIRl8RDO8TICeCA4TrtKFK@dpg-d2ei6cqdbo4c738fjc20-a/test_ioi8
-}
-}
+# # postgresql://nawar:s1P8LVoB89IIRl8RDO8TICeCA4TrtKFK@dpg-d2ei6cqdbo4c738fjc20-a/test_ioi8
+# }
+# }
 
-# if os.environ.get("DATABASE_URL"):
-#     DATABASES = {
-#         'default': dj_database_url.parse(os.environ.get("DATABASE_URL"))
-#     }
-#     DATABASES['default']['ENGINE'] = 'django.db.backends.postgresql'
-# else:
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.sqlite3',
-#             'NAME': BASE_DIR / 'db.sqlite3',
-#         }
-#     }
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        'default': dj_database_url.parse(os.environ.get("DATABASE_URL"))
+    }
+    DATABASES['default']['ENGINE'] = 'django.db.backends.postgresql'
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
