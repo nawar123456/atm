@@ -133,13 +133,23 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         if status_filter:
             queryset = queryset.filter(status=status_filter)
         return queryset
-    @action(detail=True, methods=['get'], url_path='cards', permission_classes=[IsApprovedUser])
+    @action(detail=True, methods=['get'], url_path='cards')
     def user_cards(self, request, pk=None):
         """
-        إرجاع جميع البطاقات الخاصة بالمستخدم
+        إرجاع جميع البطاقات الخاصة بالمستخدم.
+        - المستخدم العادي: فقط بطاقاته.
+        - المدير: يمكنه رؤية بطاقات أي مستخدم.
         """
-        user = self.get_object()
-        cards = CardDetail.objects.filter(user=user)
+        target_user = self.get_object()  # المستخدم الذي نريد رؤية بطاقاته
+
+    # ✅ التحقق: هل المستخدم العادي يحاول رؤية بطاقات شخص آخر؟
+        if request.user != target_user and not request.user.is_staff and request.user.role != 'admin':
+         return Response(
+            {"error": "لا يمكنك رؤية بطاقات مستخدم آخر."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+        cards = CardDetail.objects.filter(user=target_user)
         serializer = CardDetailSerializer(cards, many=True)
         return Response(serializer.data)
     @action(detail=True, methods=['post'], url_path='change_status')
