@@ -129,6 +129,12 @@ class Transaction(models.Model):
 
     # المبلغ والعملة
     amount = models.DecimalField(max_digits=12, decimal_places=2,null=True, blank=True)
+    amount_to = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
     currency_from = models.CharField(max_length=3, default='AED',null=True, blank=True)
     currency_to = models.CharField(max_length=3, default='USD',null=True, blank=True)
 

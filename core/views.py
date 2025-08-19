@@ -20,7 +20,8 @@ from .serializers import (
     CardDetailSerializer,
     TransactionSerializer,
     DigitalSignatureSerializer,
-    DeliveryLocationSerializer
+    DeliveryLocationSerializer,
+    TransferSerializer
 )
 
 # --- الصلاحيات المخصصة ---
@@ -37,13 +38,13 @@ class RegisterView(APIView):
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save()
+            user = serializer.save(status='verified')
             return Response({
-                "message": "تم إنشاء الحساب بنجاح. انتظر الموافقة من الإدارة.",
+                "message": "تم إنشاء الحساب بنجاح",
                 "user": {
                     "id": user.id,
                     "email": user.email,
-                    "status": user.status, # سيكون 'pending'
+                    "status": user.status, # سيكون 'verified'
                     "role":user.role
                 }
             }, status=status.HTTP_201_CREATED)
@@ -302,18 +303,13 @@ class TransactionViewSet(viewsets.ModelViewSet):
 # 6. التحويلات (send_money / receive_money)
 # ================================
 class TransferTransactionView(APIView):
-    """
-    واجهة مخصصة للتحويلات (كما في Postman: /api/transfers/)
-    """
     permission_classes = [IsApprovedUser]
 
     def post(self, request):
-        serializer = TransactionSerializer(data=request.data, context={'request': request})
+        serializer = TransferSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         transaction = serializer.save(user=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
 # ================================
 # 7. التحقق من الهوية (وجه + هوية)
 # ================================

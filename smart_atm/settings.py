@@ -98,7 +98,7 @@ WSGI_APPLICATION = 'smart_atm.wsgi.application'
 #         'PORT': '3306',
 #         'PASSWORD': 'password'
     
-# # postgresql://nawar:s1P8LVoB89IIRl8RDO8TICeCA4TrtKFK@dpg-d2ei6cqdbo4c738fjc20-a/test_ioi8
+# # # postgresql://nawar:s1P8LVoB89IIRl8RDO8TICeCA4TrtKFK@dpg-d2ei6cqdbo4c738fjc20-a/test_ioi8
 # }
 # }
 
@@ -166,8 +166,8 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=2), 
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=3),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
     "ALGORITHM": "HS256",

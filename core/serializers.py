@@ -8,7 +8,7 @@ from decimal import Decimal
 from datetime import datetime
 import re
 import math
-
+from .utils import get_exchange_rate
 User = get_user_model()
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
@@ -119,6 +119,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             'id',
             'transaction_type',
             'amount',
+            'amount_to',
             'currency_from',
             'currency_to',
             'card_id',
@@ -137,6 +138,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         card_id = validated_data.pop('card_id')
         amount = validated_data['amount']
+        amount_to = validated_data.get('amount_to')  # يمكن أن يكون None
 
         # ✅ التحقق من أن المبلغ موجب
         if amount <= 0:
@@ -252,7 +254,11 @@ class TransactionSerializer(serializers.ModelSerializer):
 
             # ✅ إضافة المبلغ إلى بطاقة المستقبل (في حالات send_money و receive_money)
             if transaction_type in ['send_money', 'receive_money']:
+        
                 # مثال: إذا كانت العمولة 10%، فإن المستقبل يستلم 90%
+                currency_from = validated_data['currency_from']
+                currency_to = validated_data['currency_to']
+                
                 amount_received = (amount * Decimal('0.90')).quantize(Decimal('0.01'))
                 recipient_card = recipient.cards.first()
                 recipient_card.balance += amount_received
@@ -265,6 +271,7 @@ class TransactionSerializer(serializers.ModelSerializer):
                 card=card_id,
                 transaction_type=transaction_type,
                 amount=amount,
+                amount_to=amount_to ,
                 currency_from=validated_data['currency_from'],
                 currency_to=validated_data['currency_to'],
                 sender_latitude=sender_lat,
@@ -278,6 +285,35 @@ class TransactionSerializer(serializers.ModelSerializer):
         return transaction
 
 
+# core/serializers.py
+
+class TransferSerializer(TransactionSerializer):
+    """
+    سيريالايزر مخصص للتحويلات بين العملات.
+    يرث من TransactionSerializer لكنه يضيف منطق التحويل.
+    """
+    def create(self, validated_data):
+        # استخدم نفس منطق الأب، لكن مع تمكين تحويل العملات
+        transaction_type = validated_data['transaction_type']
+        currency_from = validated_data['currency_from']
+        currency_to = validated_data['currency_to']
+
+        # فقط في التحويلات المالية، نُفعّل تحويل العملات
+        if transaction_type in ['send_money', 'receive_money']:
+            rate = get_exchange_rate(currency_from, currency_to)
+            if not rate:
+                raise serializers.ValidationError({
+                    "error": f"تعذر الحصول على سعر صرف بين {currency_from} و {currency_to}"
+                })
+            rate_decimal = Decimal(str(rate))
+            amount = validated_data['amount']
+            converted_amount = amount * rate_decimal
+            validated_data['amount_to'] = converted_amount.quantize(Decimal('0.01'))
+            amount_to =   validated_data['amount_to']
+
+
+        # استخدم منطق الأب (لكن بدون خصم/إضافة رصيد مكرر)
+        return super().create(validated_data)
 class DeliveryLocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeliveryLocation
