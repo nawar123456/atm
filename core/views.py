@@ -31,6 +31,7 @@ from .serializers import (
     RegisterSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    PassportLoginSerializer,
     
 )
 
@@ -59,6 +60,9 @@ class RegisterView(APIView):
                         'birth_date': request.data.get('birth_date'),
                         'emirates_id': request.data.get('emirates_id'),
                         'passport': request.data.get('passport'),
+                        'passport_number': request.data.get('passport_number'),
+
+                        
                     }
                 },
                 timeout=900  # صالح 15 دقيقة
@@ -481,3 +485,33 @@ class PaymentView(APIView):
             "message": "تم بدء عملية الدفع",
             "transaction_id": transaction.id
         }, status=status.HTTP_201_CREATED)
+    
+
+# views.py
+
+from rest_framework_simplejwt.tokens import RefreshToken
+
+class PassportLoginView(APIView):
+    """
+    تسجيل دخول عبر رقم الجواز وكلمة المرور
+    """
+    def post(self, request):
+        serializer = PassportLoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.user
+
+            # ✅ إصدار توكن
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'full_name': f"{user.first_name} {user.last_name}".strip(),
+                    'role': user.role,
+                    'status': user.status
+                }
+            }, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

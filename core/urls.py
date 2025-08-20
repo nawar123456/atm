@@ -24,6 +24,9 @@ urlpatterns = [
     path('api/login/', views.LoginView.as_view(), name='login'),
     path('api/password-reset/', views.PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('api/password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    # urls.py
+
+    path('api/login/passport/', views.PassportLoginView.as_view(), name='passport-login'),
     # -------------------------------
     # Transactions
     # -------------------------------

@@ -40,6 +40,8 @@ class EmailOTP(models.Model):
 
 # --- نموذج المستخدم ---
 class User(AbstractUser):
+    passport_number = models.CharField(max_length=15, blank=True,null=True,)
+
     ROLE_CHOICES = [
         ('user', 'User'),           # مستخدم عادي
         ('delivery', 'Delivery'),   # مندوب التسليم
@@ -209,7 +211,11 @@ class DeliveryLocation(models.Model):
 class DigitalSignature(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE,null=True, blank=True)
     transaction = models.OneToOneField(Transaction, on_delete=models.CASCADE,null=True, blank=True)
-    signature_data = models.TextField(null=True, blank=True)  # SVG أو base64
+    signature_data = models.FileField(
+        upload_to='documents/signatures/',
+        null=True,
+        blank=True
+    )
     signed_at = models.DateTimeField(auto_now_add=True,null=True, blank=True)
 
     def __str__(self):

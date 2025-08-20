@@ -23,7 +23,7 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
         ('البيانات الشخصية', {'fields': ('first_name', 'last_name', 'phone_number', 'birth_date')}),
-        ('الهوية', {'fields': ('emirates_id', 'passport', 'face_scan')}),
+        ('الهوية', {'fields': ('emirates_id', 'passport', 'face_scan','passport_number')}),
         ('الحالة والدور', {'fields': ('status', 'role')}),
         ('الأذونات', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
         ('التواريخ', {'fields': ('last_login', 'date_joined'), 'classes': ('collapse',)}),

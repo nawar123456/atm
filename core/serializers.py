@@ -25,7 +25,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'email', 'username', 'first_name', 'last_name',
-            'phone_number', 'birth_date', 'password'
+            'phone_number', 'birth_date', 'password','passport_number'
         ]
 
     def create(self, validated_data):
@@ -203,6 +203,7 @@ class VerifyOTPSerializer(serializers.Serializer):
             last_name=register_data['data'].get('last_name', ''),
             phone_number=register_data['data'].get('phone_number', ''),
             birth_date=register_data['data'].get('birth_date'),
+            passport_number=register_data['data'].get('passport_number'),
             emirates_id=register_data['data'].get('emirates_id'),
             passport=register_data['data'].get('passport'),
             status='verified',
@@ -243,7 +244,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'first_name', 'last_name', 'username', 'email',
             'password', 'phone_number', 'birth_date', 'emirates_id',
-            'passport', 'status', 'role'
+            'passport', 'status', 'role','passport_number'
         ]
 
     def create(self, validated_data):
@@ -539,3 +540,29 @@ class DigitalSignatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = DigitalSignature
         fields = ['signature_data', 'transaction']
+
+# serializers.py
+# serializers.py
+
+class PassportLoginSerializer(serializers.Serializer):
+    passport_number = serializers.CharField(max_length=15)
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        passport_number = data['passport_number']
+        password = data['password']
+
+        try:
+            user = User.objects.get(passport_number=passport_number)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("لا يوجد مستخدم بهذا الرقم.")
+
+        # ✅ التحقق من كلمة المرور
+        if not user.check_password(password):
+            raise serializers.ValidationError("كلمة المرور غير صحيحة.")
+
+        if user.status != 'verified':
+            raise serializers.ValidationError("الحساب غير موثق بعد.")
+
+        self.user = user
+        return data
