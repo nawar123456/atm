@@ -3,13 +3,131 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction as db_transaction
-from .models import User, CardDetail, Transaction, DigitalSignature,DeliveryLocation
+from .models import User, CardDetail, Transaction, DigitalSignature,DeliveryLocation,EmailOTP
 from decimal import Decimal
 from datetime import datetime
 import re
 import math
 from .utils import get_exchange_rate
+from django.contrib.auth import get_user_model
+from .models import generate_otp
+from django.core.cache import cache
+from django.core.cache import cache
+from django.utils import timezone
+import json
 User = get_user_model()
+
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            'email', 'username', 'first_name', 'last_name',
+            'phone_number', 'birth_date', 'password'
+        ]
+
+    def create(self, validated_data):
+        # لا نُنشئ المستخدم فورًا
+        email = validated_data['email']
+
+        # إنشاء أو تحديث OTP
+        otp_code = generate_otp()
+        otp_obj, created = EmailOTP.objects.update_or_create(
+            email=email,
+            defaults={'otp': otp_code}
+        )
+
+        # إرسال OTP إلى البريد
+        self.send_otp_email(email, otp_code)
+        return {'email': email}
+
+  
+
+        # إرجاع البريد فقط (المستخدم لم يُنشَأ بعد)
+
+    def send_otp_email(self, email, otp):
+        from django.core.mail import send_mail
+        from django.conf import settings
+
+        subject = "رمز التحقق (OTP) لحسابك"
+        message = f"""
+        مرحباً،
+
+        رمز التحقق الخاص بك هو: {otp}
+
+        يُرجى استخدام هذا الرمز لتفعيل حسابك.
+
+        شكرًا،
+        فريق الدعم
+        """
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=False,
+        )
+
+# serializers.py
+# serializers.py
+
+class VerifyOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6)
+
+    def validate(self, data):
+        email = data['email']
+        otp = data['otp']
+
+        # التحقق من OTP
+        try:
+            otp_obj = EmailOTP.objects.get(email=email)
+        except EmailOTP.DoesNotExist:
+            raise serializers.ValidationError("لا يوجد طلب تحقق لهذا البريد.")
+
+        if otp_obj.otp != otp:
+            raise serializers.ValidationError("رمز OTP غير صحيح.")
+
+        # التحقق من انتهاء الصلاحية
+        if (timezone.now() - otp_obj.created_at).total_seconds() > 900:
+            raise serializers.ValidationError("انتهت صلاحية رمز OTP.")
+
+        # ✅ استرجاع البيانات من الذاكرة المؤقتة
+        cache_key = f"register_data_{email}"
+        register_data = cache.get(cache_key)
+        if not register_data:
+            raise serializers.ValidationError("الجلسة منتهية الصلاحية. يرجى المحاولة مرة أخرى.")
+
+        self.register_data = register_data
+        self.otp_obj = otp_obj
+        return data
+
+    def save(self, **kwargs):
+        email = self.validated_data['email']
+        register_data = self.register_data
+
+        # ✅ إنشاء المستخدم باستخدام البيانات المحفوظة
+        user = User.objects.create_user(
+            email=email,
+            username=register_data['data'].get('username') or email.split('@')[0],
+            password=register_data['password'],
+            first_name=register_data['data'].get('first_name', ''),
+            last_name=register_data['data'].get('last_name', ''),
+            phone_number=register_data['data'].get('phone_number', ''),
+            birth_date=register_data['data'].get('birth_date'),
+            emirates_id=register_data['data'].get('emirates_id'),
+            passport=register_data['data'].get('passport'),
+            status='verified',
+            role='user'
+        )
+
+        # ✅ حذف OTP وبيانات التسجيل
+        self.otp_obj.delete()
+        cache.delete(f"register_data_{email}")
+
+        return user
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
     حساب المسافة بين نقطتين (lat, lon) بالكيلومتر.

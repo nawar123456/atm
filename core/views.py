@@ -13,6 +13,11 @@ from django.core.exceptions import ValidationError
 
 # --- النماذج ---from .serializers import DeliveryLocationSerializer
 from .models import User, CardDetail, Transaction, DigitalSignature,DeliveryLocation
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+import secrets
+from .models import generate_otp ,EmailOTP
+from .utils2 import send_otp_email  # ✅ الاستيراد هنا
 
 # --- السيريالايزر ---
 from .serializers import (
@@ -21,36 +26,77 @@ from .serializers import (
     TransactionSerializer,
     DigitalSignatureSerializer,
     DeliveryLocationSerializer,
-    TransferSerializer
+    TransferSerializer,
+    VerifyOTPSerializer,
+    RegisterSerializer,
+    
 )
 
 # --- الصلاحيات المخصصة ---
 from .permissions import IsAdminUser, IsApprovedUser, IsDeliveryStaff
 
-
+User = get_user_model()
 # ================================
 # 1. تسجيل مستخدم جديد (Register)
 # ================================
 class RegisterView(APIView):
-    """
-    إنشاء مستخدم جديد.
-    """
     def post(self, request):
-        serializer = UserSerializer(data=request.data)
+        serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save(status='verified')
+            email = serializer.validated_data['email']
+            cache.set(
+                f"register_data_{email}",
+                {
+                    'email': email,
+                    'password': request.data['password'],
+                    'data': {
+                        'username': request.data.get('username'),
+                        'first_name': request.data.get('first_name'),
+                        'last_name': request.data.get('last_name'),
+                        'phone_number': request.data.get('phone_number'),
+                        'birth_date': request.data.get('birth_date'),
+                        'emirates_id': request.data.get('emirates_id'),
+                        'passport': request.data.get('passport'),
+                    }
+                },
+                timeout=900  # صالح 15 دقيقة
+            )
+
+            # ✅ توليد مفتاح فريد
+            # token = secrets.token_urlsafe(32)
+
+            # ✅ حفظ البيانات مؤقتًا (بما في ذلك كلمة المرور)
+        
+            # إرسال OTP (كما كان)
+            otp_code = generate_otp()
+            otp_obj, created = EmailOTP.objects.update_or_create(
+                email=email,
+                defaults={'otp': otp_code}
+            )
+            send_otp_email(email, otp_code)
+
             return Response({
-                "message": "تم إنشاء الحساب بنجاح",
+                "message": "تم إرسال رمز OTP إلى بريدك الإلكتروني.",
+                "email": email,
+            }, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class VerifyOTPView(APIView):
+    def post(self, request):
+        serializer = VerifyOTPSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({
+                "message": "تم تفعيل الحساب بنجاح. يمكنك الآن تسجيل الدخول.",
                 "user": {
                     "id": user.id,
                     "email": user.email,
-                    "status": user.status, # سيكون 'verified'
-                    "role":user.role
+                    "full_name": f"{user.first_name} {user.last_name}".strip(),
+                    "role": user.role
                 }
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 # ================================
 # 2. تسجيل الدخول
 # ================================

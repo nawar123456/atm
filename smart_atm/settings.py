@@ -117,6 +117,17 @@ else:
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
+
+
+# إعدادات البريد (مثال باستخدام Gmail)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.hostinger.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER ='cashly@foodicis.com'          # ⚠️ غيّر هذا
+EMAIL_HOST_PASSWORD = 'smplics123@S'        # ⚠️ استخدم "App Password"
+DEFAULT_FROM_EMAIL = 'cashly@foodicis.com'
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',

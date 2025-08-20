@@ -20,6 +20,7 @@ urlpatterns = [
     # Auth & User
     # -------------------------------
     path('api/register/', views.RegisterView.as_view(), name='register'),
+    path('api/verify-otp/', views.VerifyOTPView.as_view(), name='verify-otp'),
     path('api/login/', views.LoginView.as_view(), name='login'),
 
     # -------------------------------

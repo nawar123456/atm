@@ -3,6 +3,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
+from django.conf import settings
+import random
 
 # --- مُحقق هوية الإمارات ---
 UAE_ID_REGEX = r'^\d{3}-\d{4}-\d{7}-\d{1}$'
@@ -10,6 +12,23 @@ emirates_id_validator = RegexValidator(
     regex=UAE_ID_REGEX,
     message="صيغة الهوية الإماراتية غير صحيحة. يجب أن تكون بالشكل: 784-1995-1234567-1"
 )
+
+User = settings.AUTH_USER_MODEL  # ✅ هذا آمن في models.py
+def generate_otp():
+    return str(random.randint(10000, 99999))
+
+class EmailOTP(models.Model):
+    email = models.EmailField(unique=True)
+    otp = models.CharField(max_length=5)
+    created_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.email} - {self.otp}"
+
+    def regenerate_otp(self):
+        self.otp = generate_otp()
+        self.save()
+        return self.otp
 
 # --- نموذج المستخدم ---
 class User(AbstractUser):
