@@ -3,7 +3,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction as db_transaction
-from .models import User, CardDetail, Transaction, DigitalSignature,DeliveryLocation,EmailOTP
+from .models import User, CardDetail, Transaction, DigitalSignature,DeliveryLocation,EmailOTP,PasswordResetOTP
 from decimal import Decimal
 from datetime import datetime
 import re
@@ -73,6 +73,92 @@ class RegisterSerializer(serializers.ModelSerializer):
 # serializers.py
 # serializers.py
 
+
+# serializers.py
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("لا يوجد حساب بهذا البريد الإلكتروني.")
+        return value
+
+    def save(self, **kwargs):
+        email = self.validated_data['email']
+
+        # توليد OTP
+        otp = generate_otp()
+
+        # حفظ أو تحديث OTP
+        PasswordResetOTP.objects.update_or_create(
+            email=email,
+            defaults={'otp': otp}
+        )
+
+        # إرسال OTP إلى البريد
+        self.send_otp_email(email, otp)
+
+    def send_otp_email(self, email, otp):
+        from django.core.mail import send_mail
+        from django.conf import settings
+
+        subject = "رمز إعادة تعيين كلمة المرور"
+        message = f"""
+        مرحباً،
+
+        رمز إعادة تعيين كلمة المرور الخاص بك هو: {otp}
+
+        يُرجى استخدام هذا الرمز لتغيير كلمة المرور.
+
+        شكرًا،
+        فريق الدعم
+        """
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=False,
+        )
+
+# serializers.py
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, data):
+        email = data['email']
+        otp = data['otp']
+
+        try:
+            otp_obj = PasswordResetOTP.objects.get(email=email)
+        except PasswordResetOTP.DoesNotExist:
+            raise serializers.ValidationError("لا يوجد طلب إعادة تعيين لهذا البريد.")
+
+        if otp_obj.otp != otp:
+            raise serializers.ValidationError("رمز OTP غير صحيح.")
+
+        # التحقق من انتهاء الصلاحية (15 دقيقة)
+        from django.utils import timezone
+        if (timezone.now() - otp_obj.created_at).total_seconds() > 900:
+            raise serializers.ValidationError("انتهت صلاحية رمز OTP.")
+
+        self.otp_obj = otp_obj
+        return data
+
+    def save(self, **kwargs):
+        # تغيير كلمة المرور
+        user = User.objects.get(email=self.validated_data['email'])
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+
+        # حذف OTP بعد الاستخدام
+        self.otp_obj.delete()
+
+        return user
 class VerifyOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField(max_length=6)

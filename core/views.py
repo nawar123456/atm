@@ -29,6 +29,8 @@ from .serializers import (
     TransferSerializer,
     VerifyOTPSerializer,
     RegisterSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
     
 )
 
@@ -82,6 +84,28 @@ class RegisterView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# views.py
+
+class PasswordResetRequestView(APIView):
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "تم إرسال رمز OTP إلى بريدك الإلكتروني."
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetConfirmView(APIView):
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({
+                "message": "تم تغيير كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول."
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class VerifyOTPView(APIView):
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data, context={'request': request})

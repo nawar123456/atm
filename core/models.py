@@ -17,6 +17,14 @@ User = settings.AUTH_USER_MODEL  # ✅ هذا آمن في models.py
 def generate_otp():
     return str(random.randint(10000, 99999))
 
+class PasswordResetOTP(models.Model):
+    email = models.EmailField()
+    otp = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.email} - {self.otp}"
+    
 class EmailOTP(models.Model):
     email = models.EmailField(unique=True)
     otp = models.CharField(max_length=5)
