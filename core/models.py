@@ -189,6 +189,10 @@ class Transaction(models.Model):
         limit_choices_to={'role': 'delivery'},
         related_name='assigned_deliveries'
     )
+    
+    message = models.CharField(max_length=255, blank=True,null=True)
+    address = models.CharField(max_length=255, blank=True,null=True)
+
 
     # حالة التسليم
     delivery_status = models.CharField(max_length=20, choices=DELIVERY_STATUS_CHOICES, default='pending',null=True, blank=True)

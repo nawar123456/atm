@@ -317,7 +317,8 @@ class TransactionSerializer(serializers.ModelSerializer):
     recipient_longitude = serializers.DecimalField(
         max_digits=9, decimal_places=6, required=False, allow_null=True
     )
-
+    message = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    address = serializers.CharField(max_length=255, required=False, allow_blank=True)
     class Meta:
         model = Transaction
         fields = [
@@ -334,7 +335,9 @@ class TransactionSerializer(serializers.ModelSerializer):
             'recipient_latitude',
             'recipient_longitude',
             'timestamp',
-            'delivery_agent'
+            'delivery_agent',
+            'message',      # ✅ تم الإضافة
+            'address',      # ✅ تم الإضافة
         ]
         read_only_fields = ['timestamp']
 
@@ -344,7 +347,8 @@ class TransactionSerializer(serializers.ModelSerializer):
         card_id = validated_data.pop('card_id')
         amount = validated_data['amount']
         amount_to = validated_data.get('amount_to')  # يمكن أن يكون None
-
+        message = validated_data.pop('message', '')
+        address = validated_data.pop('address', '')
         # ✅ التحقق من أن المبلغ موجب
         if amount <= 0:
             raise serializers.ValidationError({"amount": "يجب أن يكون المبلغ أكبر من صفر."})
@@ -483,8 +487,9 @@ class TransactionSerializer(serializers.ModelSerializer):
                 sender_longitude=sender_lng,
                 recipient_latitude=recipient_lat,
                 recipient_longitude=recipient_lng,
-                delivery_agent=closest_delivery_agent  # 💥 هنا التعيين التلقائي
-
+                delivery_agent=closest_delivery_agent,  # 💥 هنا التعيين التلقائي
+                message=message,      # ✅ حفظ الرسالة
+                address=address,    
             )
 
         return transaction
