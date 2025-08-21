@@ -237,7 +237,7 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    # password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
@@ -246,13 +246,23 @@ class UserSerializer(serializers.ModelSerializer):
             'password', 'phone_number', 'birth_date', 'emirates_id',
             'passport', 'status', 'role','passport_number'
         ]
+        extra_kwargs = {
+            'username': {'required': False},
+            'email': {'required': False},
+            'password': {'required': False},
+            'first_name': {'required': False},
+            'last_name': {'required': False},
+            # يمكنك إضافة باقي الحقول حسب الحاجة
+        }
 
-    def create(self, validated_data):
-        password = validated_data.pop('password')
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+       
+        instance.save()
+        return instance
+   
+  
 
 
 
@@ -490,6 +500,7 @@ class TransactionSerializer(serializers.ModelSerializer):
                 delivery_agent=closest_delivery_agent,  # 💥 هنا التعيين التلقائي
                 message=message,      # ✅ حفظ الرسالة
                 address=address,    
+                delivery_status='assigned'
             )
 
         return transaction
@@ -545,6 +556,11 @@ class DigitalSignatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = DigitalSignature
         fields = ['signature_data', 'transaction']
+    def validate(self, data):
+        transaction = data['transaction']
+        if transaction.delivery_status == 'delivered':
+            raise serializers.ValidationError("المعاملة مكتملة بالفعل.")
+        return data
 
 # serializers.py
 # serializers.py

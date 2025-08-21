@@ -192,7 +192,7 @@ class LoginView(APIView):
 # ================================
 # 3. إدارة المستخدمين (للإدارة فقط)
 # ================================
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     """
     عرض المستخدمين (فقط للمدراء).
     لا يُعرض أي حقل حساس.
@@ -203,15 +203,41 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     # http_method_names = ['get', 'head', 'options']
 
     def get_queryset(self):
-        # دعم التصفية حسب الحالة (كما في Postman)
+        # دعم التصفية حسب الحالة
         status_filter = self.request.query_params.get('status')
-        queryset = User.objects.only(
-            'id', 'first_name', 'last_name', 'email', 'status', 'role',
-            'phone_number', 'emirates_id', 'passport', 'birth_date'
-        )
+        queryset = User.objects.all()
         if status_filter:
             queryset = queryset.filter(status=status_filter)
         return queryset
+    
+    @action(detail=False, methods=['put'], url_path='update-profile')
+    def update_profile(self, request):
+        """
+        تعديل بيانات المستخدم الشخصية (الاسم الأول، الاسم الأخير، رقم الجوال)
+        """
+        user = request.user
+        data = request.data
+
+        # تحديث الحقول المسموح بها
+        user.first_name = data.get('first_name', user.first_name)
+        user.last_name = data.get('last_name', user.last_name)
+        user.phone_number = data.get('phone_number', user.phone_number)
+
+        # يمكنك إضافة حقول أخرى مثل birth_date, emirates_id إذا أردت
+
+        user.save(update_fields=['first_name', 'last_name', 'phone_number'])
+        
+        return Response({
+            "message": "تم تحديث الملف الشخصي بنجاح.",
+            "user": {
+                "id": user.id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "phone_number": user.phone_number,
+                "role": user.role
+            }
+        }, status=status.HTTP_200_OK)
     @action(detail=True, methods=['get'], url_path='cards')
     def user_cards(self, request, pk=None):
         """
@@ -437,9 +463,12 @@ class TransferTransactionView(APIView):
 # ================================
 # 7. التحقق من الهوية (وجه + هوية)
 # ================================
+# views.py
+
 class FaceIDVerificationView(APIView):
     """
     رفع صورة الوجه وهوية الإمارات
+    بعد الرفع، يصبح المستخدم مُحققًا تلقائيًا
     """
     permission_classes = [IsAuthenticated]
 
@@ -456,51 +485,70 @@ class FaceIDVerificationView(APIView):
         user = request.user
         user.face_scan = face_scan
         user.emirates_id = emirates_id
-        user.status = 'pending'
+        # ✅ تغيير الحالة إلى 'verified' تلقائيًا
+        user.status = 'verified'
         user.save(update_fields=['face_scan', 'emirates_id', 'status'])
 
         return Response({
-            "message": "تم رفع بيانات التحقق. سيتم مراجعتها من قبل الإدارة."
+            "message": "تم التحقق من هويتك بنجاح. يمكنك الآن استلام الأموال."
         }, status=status.HTTP_200_OK)
-
 
 # ================================
 # 8. التوقيع الرقمي
 # ================================
 
+# views.py
+
 class SignatureView(APIView):
     """
-    حفظ التوقيع الرقمي
+    رفع التوقيع الرقمي → إكمال المعاملة تلقائيًا
     """
-    permission_classes = [IsApprovedUser]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         signature_data = request.data.get("signature_data")
         transaction_id = request.data.get("transaction_id")
 
-        if not signature_data:  # ✅ التصحيح هنا
+        if not signature_data:
             return Response(
-                {"error": "الرجاء إرسال بيانات التوقيع"},
+                {"error": "التوقيع مطلوب"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
             transaction = Transaction.objects.get(id=transaction_id)
         except Transaction.DoesNotExist:
-            return Response({"error": "المعاملة غير موجودة"}, status=404)
+            return Response(
+                {"error": "المعاملة غير موجودة"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        # التحقق: هل المستخدم هو المستلم؟
-        if request.user != transaction.recipient:
-            return Response({"error": "أنت لست المستلم لهذه المعاملة"}, status=403)
+        # ✅ التحقق: هل المندوب هو من يُكمل المعاملة؟
+        if request.user != transaction.delivery_agent:
+            return Response(
+                {"error": "ليس لديك صلاحية إكمال هذه المعاملة"},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
-        DigitalSignature.objects.update_or_create(
+        # ✅ إنشاء التوقيع
+        DigitalSignature.objects.create(
             transaction=transaction,
-            defaults={
-                "user": request.user,
-                "signature_data": signature_data
-            }
+            signature_data=signature_data
         )
-        return Response({"message": "تم حفظ التوقيع الرقمي بنجاح"}, status=status.HTTP_200_OK)
+
+        # ✅ تحديث حالة المعاملة إلى "مكتملة"
+        transaction.delivery_status = 'delivered'
+        transaction.status = 'completed'
+        transaction.save(update_fields=['delivery_status', 'status'])
+
+        return Response({
+            "message": "تم التوقيع وإكمال المعاملة بنجاح.",
+            "transaction": {
+                "id": transaction.id,
+                "status": "completed",
+                "delivery_status": "delivered"
+            }
+        }, status=status.HTTP_200_OK)
 # ================================
 # 9. دفع التسليم (مثل Postman)
 # ================================
