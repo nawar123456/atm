@@ -32,6 +32,7 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     PassportLoginSerializer,
+    haversine_distance,
     
 )
 
@@ -297,7 +298,53 @@ class TransactionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
                 return Transaction.objects.filter(user=self.request.user)
 
-        
+    @action(detail=True, methods=['get'], url_path='track')
+    def track_delivery(self, request, pk=None):
+        """
+        تتبع موقع مندوب التسليم
+        """
+        transaction = self.get_object()
+
+        if not transaction.delivery_agent:
+            return Response(
+                {"error": "لا يوجد مندوب مُعين لهذه المعاملة."},
+                status=404
+            )
+
+        delivery_location = getattr(transaction.delivery_agent, 'location', None)
+        if not delivery_location:
+            return Response(
+                {"error": "المندوب لم يُفعّل تتبع الموقع بعد."},
+                status=404
+            )
+
+        # حساب المسافة من المندوب إلى المستقبل
+        distance = haversine_distance(
+            float(transaction.recipient_latitude),
+            float(transaction.recipient_longitude),
+            float(delivery_location.latitude),
+            float(delivery_location.longitude)
+        )
+
+        return Response({
+            "delivery_agent": {
+                "id": transaction.delivery_agent.id,
+                "full_name": f"{transaction.delivery_agent.first_name} {transaction.delivery_agent.last_name}",
+                "phone_number": transaction.delivery_agent.phone_number,
+            },
+            "current_location": {
+                "latitude": delivery_location.latitude,
+                "longitude": delivery_location.longitude,
+                "updated_at": delivery_location.updated_at
+            },
+            "destination": {
+                "latitude": transaction.recipient_latitude,
+                "longitude": transaction.recipient_longitude
+            },
+            "distance_to_destination_km": round(distance, 2),
+            "estimated_time_minutes": round(distance / 0.6, 1),  # افتراض سرعة 36 كم/ساعة
+            "delivery_status": transaction.delivery_status
+        })    
     @action(detail=False, methods=['get'], url_path='credit')
     def credit_transactions(self, request):
         """
