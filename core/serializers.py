@@ -3,7 +3,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction as db_transaction
-from .models import User, CardDetail, Transaction, DigitalSignature,DeliveryLocation,EmailOTP,PasswordResetOTP
+from .models import User, CardDetail, Transaction, DigitalSignature,DeliveryLocation,EmailOTP,PasswordResetOTP,GuestUser
 from decimal import Decimal
 from datetime import datetime
 import re
@@ -571,3 +571,134 @@ class PassportLoginSerializer(serializers.Serializer):
 
         self.user = user
         return data
+    
+    # core/serializers.py
+
+class GuestRegisterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GuestUser
+        fields = [
+            'first_name', 'last_name', 'phone_number',
+            'emirates_id_front', 'emirates_id_back', 'passport', 'face_scan'
+        ]
+
+    def validate(self, data):
+        # يمكنك إضافة تحقق من صحة الوثائق لاحقًا
+        return data
+
+    def create(self, validated_data):
+        return GuestUser.objects.create(**validated_data)
+
+
+class GuestTransactionSerializer(serializers.Serializer):
+    # تفاصيل البطاقة
+    card_number = serializers.CharField(max_length=19)
+    expiry = serializers.DateField()  # توقع تاريخ كامل
+    cvv = serializers.CharField(max_length=8)
+    cardholder_name = serializers.CharField(max_length=100)
+
+    # تفاصيل المعاملة
+    transaction_type = serializers.ChoiceField(choices=[
+        ('withdrawal', 'Withdrawal'),
+        ('deposit', 'Deposit')
+    ])
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    currency_from = serializers.CharField(max_length=3, default='AED')
+
+    # الموقع
+    sender_latitude = serializers.DecimalField(max_digits=9, decimal_places=6)
+    sender_longitude = serializers.DecimalField(max_digits=9, decimal_places=6)
+    recipient_latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+    recipient_longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+
+    # def validate_card_number(self, value):
+    #     cleaned = value.replace(' ', '').replace('-', '')
+    #     if not re.match(r'^\d{13,19}$', cleaned):
+    #         raise serializers.ValidationError("رقم البطاقة غير صالح.")
+    #     return cleaned
+
+    # def validate_expiry(self, value):
+    #     if not re.match(r'^(0[1-9]|1[0-2])\/\d{2}$', value):
+    #         raise serializers.ValidationError("صيغة التاريخ يجب أن تكون MM/YY")
+    #     return value
+
+    def create(self, validated_data):
+        card_number = validated_data['card_number']
+        expiry = validated_data['expiry']
+        cvv = validated_data['cvv']
+
+        # تحويل MM/YY إلى تاريخ
+        # try:
+        #     month, year = map(int, expiry_str.split('/'))
+        #     full_year = 2000 + year if year < 50 else 1900 + year
+        #     expiry_date = datetime(full_year, month, 1).date()
+        # except Exception:
+        #     raise serializers.ValidationError({"expiry": "لا يمكن تحويل التاريخ."})
+
+        # استخراج آخر 4 أرقام
+        last_four = card_number[-4:]
+
+        # إنشاء بطاقة مؤقتة (بدون ربط بمستخدم)
+        temp_card = CardDetail.objects.create(
+            user=None,
+            last_four=last_four,
+            # expiry=,
+            cardholder_name=validated_data['cardholder_name'],
+            balance=0,
+            card_number=card_number,  # ⚠️ لا يُخزن في الإنتاج
+            cvv=cvv,
+            expiry=expiry
+        )
+
+        # إنشاء المعاملة
+        transaction = Transaction.objects.create(
+            user=None,
+            card=temp_card,
+            transaction_type=validated_data['transaction_type'],
+            amount=validated_data['amount'],
+            currency_from=validated_data['currency_from'],
+            sender_latitude=validated_data['sender_latitude'],
+            sender_longitude=validated_data['sender_longitude'],
+            recipient_latitude=validated_data.get('recipient_latitude'),
+            recipient_longitude=validated_data.get('recipient_longitude'),
+            delivery_status='completed'  # أو 'pending'
+        )
+
+        return transaction
+
+
+# serializers.py
+
+class DeliveryTransactionSerializer(serializers.ModelSerializer):
+    sender_name = serializers.SerializerMethodField()
+    recipient_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Transaction
+        fields = [
+            'id',
+            'transaction_type',
+            'amount',
+            'currency_from',
+            'currency_to',
+            'delivery_status',
+            'timestamp',
+            'sender_latitude',
+            'sender_longitude',
+            'recipient_latitude',
+            'recipient_longitude',
+            'sender_name',
+            'recipient_name',
+            'message',
+            'address'
+        ]
+
+    def get_sender_name(self, obj):
+        if obj.user:
+            return f"{obj.user.first_name} {obj.user.last_name}".strip()
+        return "مجهول"
+
+    def get_recipient_name(self, obj):
+        if obj.recipient:
+            return f"{obj.recipient.first_name} {obj.recipient.last_name}".strip()
+        return "مجهول"

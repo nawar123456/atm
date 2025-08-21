@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.conf import settings
 import random
+import secrets
 
 # --- مُحقق هوية الإمارات ---
 UAE_ID_REGEX = r'^\d{3}-\d{4}-\d{7}-\d{1}$'
@@ -133,7 +134,9 @@ class Transaction(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='transactions',
-        help_text="المرسل أو صاحب الحساب"
+        help_text="المرسل أو صاحب الحساب",
+        null=True,      # ✅ السماح بـ NULL
+        blank=True,
     )
 
     # المستلم (اختياري)
@@ -224,3 +227,25 @@ class DigitalSignature(models.Model):
 
     def __str__(self):
         return f"Signature for Transaction {self.transaction.id}"
+    
+# --- نموذج الضيف ---
+class GuestUser(models.Model):
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
+    phone_number = models.CharField(max_length=20, null=True, blank=True)
+    
+    # الوثائق
+    emirates_id_front = models.FileField(upload_to='guests/emirates_id_front/', null=True, blank=True)
+    emirates_id_back = models.FileField(upload_to='guests/emirates_id_back/', null=True, blank=True)
+    passport = models.FileField(upload_to='guests/passports/', null=True, blank=True)
+    face_scan = models.ImageField(upload_to='guests/face_scans/', null=True, blank=True)
+
+    # توكن مؤقت
+    temp_token = models.CharField(max_length=64, unique=True, default=secrets.token_urlsafe)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} - Guest"
+
+    def get_temporary_token(self):
+        return self.temp_token

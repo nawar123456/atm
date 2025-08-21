@@ -3,7 +3,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth import get_user_model
-from .models import User, CardDetail, Transaction, DigitalSignature
+from .models import User, CardDetail, Transaction, DigitalSignature,GuestUser
 from .models import DeliveryLocation
 
 # --- 1. إدارة المستخدمين ---
@@ -115,6 +115,42 @@ class DigitalSignatureAdmin(admin.ModelAdmin):
     list_filter = ('signed_at',)
     search_fields = ('user__email', 'transaction__id')
     # readonly_fields = ('user', 'transaction', 'signature_data', 'signed_at')
+
+class GuestUserAdmin(admin.ModelAdmin):
+    list_display = ('first_name', 'last_name', 'phone_number', 'created_at', 'has_emirates_id', 'has_passport', 'has_face_scan')
+    list_filter = ('created_at',)
+    search_fields = ('first_name', 'last_name', 'phone_number')
+    readonly_fields = ('temp_token', 'created_at')
+    fieldsets = (
+        ('المعلومات الشخصية', {
+            'fields': ('first_name', 'last_name', 'phone_number')
+        }),
+        ('الوثائق', {
+            'fields': ('emirates_id_front', 'emirates_id_back', 'passport', 'face_scan'),
+            'classes': ('collapse',)
+        }),
+        ('المعلومات الفنية', {
+            'fields': ('temp_token', 'created_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def has_emirates_id(self, obj):
+        return bool(obj.emirates_id_front or obj.emirates_id_back)
+    has_emirates_id.boolean = True
+    has_emirates_id.short_description = 'هوية الإمارات'
+
+    def has_passport(self, obj):
+        return bool(obj.passport)
+    has_passport.boolean = True
+    has_passport.short_description = 'جواز السفر'
+
+    def has_face_scan(self, obj):
+        return bool(obj.face_scan)
+    has_face_scan.boolean = True
+    has_face_scan.short_description = 'مسح الوجه'
+
+admin.site.register(GuestUser, GuestUserAdmin)
 
     # fieldsets = (
     #     (None, {

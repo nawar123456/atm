@@ -36,6 +36,7 @@ urlpatterns = [
     # Transfers (send/receive money)
     # -------------------------------
     path('api/transfers/', views.TransferTransactionView.as_view(), name='transfer-create'),
+    path('api/delivery/transactions/', views.DeliveryTransactionView.as_view(), name='delivery-transactions'),
 
     # -------------------------------
     # Delivery & Verification
@@ -43,6 +44,8 @@ urlpatterns = [
     path('api/delivery/payment/', views.PaymentView.as_view(), name='delivery-payment'),
     path('api/delivery/verify-face/', views.FaceIDVerificationView.as_view(), name='verify-face'),
     path('api/delivery/signature/', views.SignatureView.as_view(), name='digital-signature'),
+    path('api/guest/register/', views.GuestRegisterView.as_view(), name='guest-register'),
+    path('api/guest/transaction/', views.GuestTransactionView.as_view(), name='guest-transaction'),
 
     # -------------------------------
     # Default Router URLs

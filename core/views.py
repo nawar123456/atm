@@ -12,7 +12,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 
 # --- النماذج ---from .serializers import DeliveryLocationSerializer
-from .models import User, CardDetail, Transaction, DigitalSignature,DeliveryLocation
+from .models import User, CardDetail, Transaction, DigitalSignature,DeliveryLocation,GuestUser
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 import secrets
@@ -32,6 +32,9 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     PassportLoginSerializer,
+    GuestRegisterSerializer,
+    GuestTransactionSerializer,
+    DeliveryTransactionSerializer,
     haversine_distance,
     
 )
@@ -562,3 +565,92 @@ class PassportLoginView(APIView):
             }, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+class GuestRegisterView(APIView):
+    """
+    تسجيل كضيف: رفع الوثائق
+    """
+    def post(self, request):
+        serializer = GuestRegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            guest = serializer.save()
+            return Response({
+                "message": "تم التسجيل كضيف بنجاح.",
+                "temp_token": guest.get_temporary_token(),
+                "user": {
+                    "id": guest.id,
+                    "first_name": guest.first_name,
+                    "last_name": guest.last_name,
+                    "phone_number": guest.phone_number
+                }
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GuestTransactionView(APIView):
+    """
+    إجراء معاملة كضيف
+    """
+    def post(self, request):
+        # التحقق من توكن الضيف
+        temp_token = request.headers.get('X-Guest-Token')
+        if not temp_token:
+            return Response({"error": "توكن الضيف مطلوب."}, status=401)
+
+        try:
+            guest = GuestUser.objects.get(temp_token=temp_token)
+        except GuestUser.DoesNotExist:
+            return Response({"error": "توكن الضيف غير صحيح أو منتهي الصلاحية."}, status=401)
+
+        # التحقق من أن الضيف لم يُجرِ معاملة من قبل
+        if hasattr(guest, 'transaction') and guest.transaction:
+            return Response({"error": "الضيف قد أجرى معاملة من قبل."}, status=400)
+
+        # إنشاء المعاملة
+        serializer = GuestTransactionSerializer(data=request.data)
+        if serializer.is_valid():
+            transaction = serializer.save()
+
+            # ربط المعاملة بالضيف (اختياري)
+            # guest.transaction = transaction
+            # guest.save()
+
+            return Response({
+                "message": "تم إجراء المعاملة بنجاح.",
+                "transaction": {
+                    "id": transaction.id,
+                    "transaction_type": transaction.transaction_type,
+                    "amount": transaction.amount,
+                    "currency_from": transaction.currency_from,
+                    "status": transaction.delivery_status
+                }
+            }, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+# views.py
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .permissions import IsDeliveryStaff
+
+class DeliveryTransactionView(APIView):
+    """
+    عرض جميع المعاملات المُسندة للمندوب
+    """
+    permission_classes = [IsAuthenticated, IsDeliveryStaff]
+
+    def get(self, request):
+        # الحصول على جميع المعاملات المُسندة للمندوب
+        transactions = Transaction.objects.filter(
+            delivery_agent=request.user
+        ).select_related('user', 'recipient').order_by('-timestamp')
+
+        serializer = DeliveryTransactionSerializer(transactions, many=True)
+        return Response({
+            "count": transactions.count(),
+            "transactions": serializer.data
+        })
