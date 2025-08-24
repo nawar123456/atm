@@ -606,20 +606,23 @@ class GuestRegisterSerializer(serializers.ModelSerializer):
         return GuestUser.objects.create(**validated_data)
 
 
+# serializers.py
+
 class GuestTransactionSerializer(serializers.Serializer):
-    # تفاصيل البطاقة
+    # ... الحقول السابقة ...
     card_number = serializers.CharField(max_length=19)
-    expiry = serializers.DateField()  # توقع تاريخ كامل
+    expiry = serializers.DateField()
     cvv = serializers.CharField(max_length=8)
     cardholder_name = serializers.CharField(max_length=100)
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    currency_from = serializers.CharField(max_length=3)
 
-    # تفاصيل المعاملة
+    recipient_id = serializers.IntegerField(required=False)  # مثلاً: في send_money
     transaction_type = serializers.ChoiceField(choices=[
         ('withdrawal', 'Withdrawal'),
-        ('deposit', 'Deposit')
+        ('deposit', 'Deposit'),
+        ('send_money', 'Send Money')
     ])
-    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    currency_from = serializers.CharField(max_length=3, default='AED')
 
     # الموقع
     sender_latitude = serializers.DecimalField(max_digits=9, decimal_places=6)
@@ -627,46 +630,56 @@ class GuestTransactionSerializer(serializers.Serializer):
     recipient_latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
     recipient_longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
 
-    # def validate_card_number(self, value):
-    #     cleaned = value.replace(' ', '').replace('-', '')
-    #     if not re.match(r'^\d{13,19}$', cleaned):
-    #         raise serializers.ValidationError("رقم البطاقة غير صالح.")
-    #     return cleaned
-
-    # def validate_expiry(self, value):
-    #     if not re.match(r'^(0[1-9]|1[0-2])\/\d{2}$', value):
-    #         raise serializers.ValidationError("صيغة التاريخ يجب أن تكون MM/YY")
-    #     return value
-
     def create(self, validated_data):
         card_number = validated_data['card_number']
         expiry = validated_data['expiry']
         cvv = validated_data['cvv']
 
-        # تحويل MM/YY إلى تاريخ
-        # try:
-        #     month, year = map(int, expiry_str.split('/'))
-        #     full_year = 2000 + year if year < 50 else 1900 + year
-        #     expiry_date = datetime(full_year, month, 1).date()
-        # except Exception:
-        #     raise serializers.ValidationError({"expiry": "لا يمكن تحويل التاريخ."})
-
         # استخراج آخر 4 أرقام
         last_four = card_number[-4:]
 
-        # إنشاء بطاقة مؤقتة (بدون ربط بمستخدم)
+        # إنشاء بطاقة مؤقتة
         temp_card = CardDetail.objects.create(
             user=None,
             last_four=last_four,
-            # expiry=,
+            expiry=expiry,
             cardholder_name=validated_data['cardholder_name'],
             balance=0,
-            card_number=card_number,  # ⚠️ لا يُخزن في الإنتاج
-            cvv=cvv,
-            expiry=expiry
+            card_number=card_number,
+            cvv=cvv
         )
 
-        # إنشاء المعاملة
+        # ✅ استخراج recipient (إذا وُجد)
+        recipient = None
+        if validated_data.get('recipient_id'):
+            try:
+                recipient = User.objects.get(id=validated_data['recipient_id'])
+            except User.DoesNotExist:
+                raise serializers.ValidationError({"recipient_id": "المستخدم المستلم غير موجود."})
+
+        # ✅ تحديد delivery_agent تلقائيًا (أقرب مندوب)
+        recipient_lat = validated_data.get('recipient_latitude')
+        recipient_lng = validated_data.get('recipient_longitude')
+        closest_delivery_agent = None
+
+        if recipient_lat and recipient_lng:
+            # from .utils import haversine_distance
+            delivery_locations = DeliveryLocation.objects.select_related('delivery_agent').all()
+            min_distance = None
+            for location in delivery_locations:
+                if not location.delivery_agent.is_approved:
+                    continue
+                distance = haversine_distance(
+                    float(recipient_lat),
+                    float(recipient_lng),
+                    float(location.latitude),
+                    float(location.longitude)
+                )
+                if min_distance is None or distance < min_distance:
+                    min_distance = distance
+                    closest_delivery_agent = location.delivery_agent
+
+        # ✅ إنشاء المعاملة مع recipient و delivery_agent
         transaction = Transaction.objects.create(
             user=None,
             card=temp_card,
@@ -675,13 +688,14 @@ class GuestTransactionSerializer(serializers.Serializer):
             currency_from=validated_data['currency_from'],
             sender_latitude=validated_data['sender_latitude'],
             sender_longitude=validated_data['sender_longitude'],
-            recipient_latitude=validated_data.get('recipient_latitude'),
-            recipient_longitude=validated_data.get('recipient_longitude'),
-            delivery_status='completed'  # أو 'pending'
+            recipient_latitude=recipient_lat,
+            recipient_longitude=recipient_lng,
+            recipient=recipient,  # ✅ تم الإضافة
+            delivery_agent=closest_delivery_agent,  # ✅ تم التعيين التلقائي
+            delivery_status='assigned'  # أو 'pending'
         )
 
         return transaction
-
 
 # serializers.py
 
@@ -718,3 +732,59 @@ class DeliveryTransactionSerializer(serializers.ModelSerializer):
         if obj.recipient:
             return f"{obj.recipient.first_name} {obj.recipient.last_name}".strip()
         return "مجهول"
+
+# serializers.py
+# serializers.py
+
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+class CreateEmployeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'role']
+
+    def validate(self, data):
+        # ✅ تأكد من أن الدور هو staff أو delivery (أو يمكن تعديله)
+        if data.get('role') not in ['staff', 'delivery']:
+            data['role'] = 'staff'  # القيمة الافتراضية
+        return data
+
+    def create(self, validated_data):
+        # ✅ توليد username و email تلقائيًا
+        first_name = validated_data['first_name'].lower()
+        last_name = validated_data['last_name'].lower()
+        username = f"{first_name}.{last_name}"
+        email = f"{first_name}.{last_name}@company.com"
+
+        # ✅ تعيين كلمة مرور افتراضية (يمكن تغييرها لاحقًا)
+        password = "StaffPass123#"  # يمكن إرسالها عبر بريد لاحقًا
+
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            # role='staff',  # ✅ تعيين الدور تلقائيًا
+            **validated_data
+        )
+        return user
+
+
+User = get_user_model()
+
+# serializers.py
+
+class EmployeeListSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'first_name', 'last_name', 'full_name',
+            'email', 'role', 'status', 'phone_number', 'date_joined'
+        ]
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip()

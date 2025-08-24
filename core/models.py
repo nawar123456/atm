@@ -8,11 +8,11 @@ import random
 import secrets
 
 # --- مُحقق هوية الإمارات ---
-UAE_ID_REGEX = r'^\d{3}-\d{4}-\d{7}-\d{1}$'
-emirates_id_validator = RegexValidator(
-    regex=UAE_ID_REGEX,
-    message="صيغة الهوية الإماراتية غير صحيحة. يجب أن تكون بالشكل: 784-1995-1234567-1"
-)
+# UAE_ID_REGEX = r'^\d{3}-\d{4}-\d{7}-\d{1}$'
+# emirates_id_validator = RegexValidator(
+#     regex=UAE_ID_REGEX,
+#     message="صيغة الهوية الإماراتية غير صحيحة. يجب أن تكون بالشكل: 784-1995-1234567-1"
+# )
 
 User = settings.AUTH_USER_MODEL  # ✅ هذا آمن في models.py
 def generate_otp():
@@ -44,9 +44,10 @@ class User(AbstractUser):
     passport_number = models.CharField(max_length=15, blank=True,null=True,)
 
     ROLE_CHOICES = [
-        ('user', 'User'),           # مستخدم عادي
-        ('delivery', 'Delivery'),   # مندوب التسليم
-        ('admin', 'Admin'),         # مدير النظام
+        ('user', 'User'),
+        ('staff', 'Staff'),
+        ('delivery', 'Delivery'),
+        ('admin', 'Admin'),
     ]
 
     email = models.EmailField(unique=True)

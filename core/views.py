@@ -18,6 +18,7 @@ from django.core.cache import cache
 import secrets
 from .models import generate_otp ,EmailOTP
 from .utils2 import send_otp_email  # ✅ الاستيراد هنا
+from rest_framework.decorators import api_view,permission_classes
 
 # --- السيريالايزر ---
 from .serializers import (
@@ -35,6 +36,8 @@ from .serializers import (
     GuestRegisterSerializer,
     GuestTransactionSerializer,
     DeliveryTransactionSerializer,
+    CreateEmployeeSerializer,
+    EmployeeListSerializer,
     haversine_distance,
     
 )
@@ -602,7 +605,7 @@ class PassportLoginView(APIView):
             refresh = RefreshToken.for_user(user)
             return Response({
                 'access': str(refresh.access_token),
-                'refresh': str(refresh),
+                # 'refresh': str(refresh),
                 'user': {
                     'id': user.id,
                     'email': user.email,
@@ -631,7 +634,7 @@ class GuestRegisterView(APIView):
                     "id": guest.id,
                     "first_name": guest.first_name,
                     "last_name": guest.last_name,
-                    "phone_number": guest.phone_number
+                    # "phone_number": guest.phone_number
                 }
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -702,3 +705,37 @@ class DeliveryTransactionView(APIView):
             "count": transactions.count(),
             "transactions": serializer.data
         })
+
+# views.py
+
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def create_employee(request):
+    serializer = CreateEmployeeSerializer(data=request.data)
+    if serializer.is_valid():
+        employee = serializer.save()
+        return Response({
+            "message": "تم إنشاء الموظف بنجاح.",
+            "employee": {
+                "id": employee.id,
+                "first_name": employee.first_name,
+                "last_name": employee.last_name,
+                "username": employee.username,
+                "email": employee.email,
+                "role": employee.role,
+                "status": employee.status
+            }
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def list_employees(request):
+    """
+    عرض جميع الموظفين الذين دورهم 'staff' فقط
+    """
+    employees = User.objects.filter(role='staff')  # ✅ التصفية على role
+    serializer = EmployeeListSerializer(employees, many=True)
+    return Response(serializer.data)

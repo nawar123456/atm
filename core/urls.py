@@ -46,6 +46,8 @@ urlpatterns = [
     path('api/delivery/signature/', views.SignatureView.as_view(), name='digital-signature'),
     path('api/guest/register/', views.GuestRegisterView.as_view(), name='guest-register'),
     path('api/guest/transaction/', views.GuestTransactionView.as_view(), name='guest-transaction'),
+    path('api/employees/create/', views.create_employee, name='create-employee'),
+    path('api/employees/all/', views.list_employees, name='list-employees'),  # ✅ أضف هذا
 
     # -------------------------------
     # Default Router URLs
