@@ -1073,3 +1073,43 @@ class WalletTransactionSerializer(serializers.Serializer):
             )
 
         return transaction
+
+# serializers.py
+
+class MyBalanceSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'full_name',
+            'email',
+            'phone_number',
+            'role',
+            'status',
+            'total_balance'
+        ]
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip()
+
+# serializers.py
+
+class UserBalanceSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'full_name',
+            'email',
+            'phone_number',
+            'role',
+            'status',
+            'total_balance'
+        ]
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip()

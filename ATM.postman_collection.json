@@ -1,0 +1,619 @@
+{
+	"info": {
+		"_postman_id": "4adc7cd4-5a06-489c-84c3-c4beab3c629f",
+		"name": "ATM",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "34438671"
+	},
+	"item": [
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "signin",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"username\": \"mohsen_dev\",\r\n  \"email\": \"mohsen.dev@example.org\",\r\n  \"password\": \"SafePass987#\",\r\n  \"first_name\": \"Mohsen\",\r\n  \"last_name\": \"Salem\",\r\n  \"phone_number\": \"+971501234567\",\r\n  \"birth_date\": \"1995-07-21\",\r\n  \"emirates_id\": \"784-1995-7654321-1\",\r\n  \"passport\": \"A1234567sa8\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/users/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"users",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"email\": \"mohsen.dev@example.org\",\r\n  \"password\": \"SafePass987#\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/login/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"login",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "make transaction",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzA5MzI5LCJpYXQiOjE3NTM3MDc1MjksImp0aSI6Ijc1M2EzZDE1N2FmNzQ0MzZhODc5OTJiNjMyNDk5NzJiIiwidXNlcl9pZCI6M30.B6oeOtNyc2Xnt59fmVP-R8xnCbJ5ja2dV4VUIq8Asck",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"transaction_type\": \"withdrawal\",\r\n  \"amount\": \"100.00\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/transactions/start/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"transactions",
+								"start",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "make transfer (send money)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzkwMjQ5LCJpYXQiOjE3NTM3ODg0NDksImp0aSI6IjJlMzk1YmFmMWFjMTRlNTQ5MDllYmViMDMyNjllMGViIiwidXNlcl9pZCI6M30.jIhR0Ke8iQN-1ndbBafPHBVgCFQiYYJD5lrCBhcKYls",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"transaction_type\": \"send_money\",\r\n  \"card\": 1,\r\n  \"recipient_id\": 2,\r\n  \"amount_sent\": \"200.00\",\r\n  \"currency_sent\": \"USD\",\r\n  \"amount_received\": \"180.00\",\r\n  \"currency_received\": \"EUR\",\r\n  \"message_to_recipient\": \"Here is the payment\",\r\n  \"status\": \"pending\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/transfers/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"transfers",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "make transfer (receive money)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzkwMjQ5LCJpYXQiOjE3NTM3ODg0NDksImp0aSI6IjJlMzk1YmFmMWFjMTRlNTQ5MDllYmViMDMyNjllMGViIiwidXNlcl9pZCI6M30.jIhR0Ke8iQN-1ndbBafPHBVgCFQiYYJD5lrCBhcKYls",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"transaction_type\": \"receive_money\",\r\n  \"card\": 1,\r\n  \"amount_sent\": \"150.00\",\r\n  \"currency_sent\": \"USD\",\r\n  \"amount_received\": \"140.00\",\r\n  \"currency_received\": \"EUR\",\r\n  \"location\": 1,\r\n  \"status\": \"pending\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/transfers/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"transfers",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"item": [
+				{
+					"name": "get transactions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzk4MDU4LCJpYXQiOjE3NTM3OTYyNTgsImp0aSI6ImQzMzk4MWFiZWRkNjQ0NjQ4MDRkOGNkMzk3Njk1MjQyIiwidXNlcl9pZCI6NX0.60VwZNmQlqlNHK4HJOPpa273Ib5MpDzienPrAigOaPs",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/transactions/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"transactions",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzkwMTA3LCJpYXQiOjE3NTM3ODgzMDcsImp0aSI6IjNhNDVkODI3MGVlZDQxMTlhN2UxYTAxNzE2ZDhiMzNiIiwidXNlcl9pZCI6NX0.H54lvoiIX2cHCTWWQKt7zzqUlKpJLo1Hpjg6wwkJPjo",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/users/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"users",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "check status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzk4MDU4LCJpYXQiOjE3NTM3OTYyNTgsImp0aSI6ImQzMzk4MWFiZWRkNjQ0NjQ4MDRkOGNkMzk3Njk1MjQyIiwidXNlcl9pZCI6NX0.60VwZNmQlqlNHK4HJOPpa273Ib5MpDzienPrAigOaPs",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/users/?status=pending",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"users",
+								""
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "pending"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "change status",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzk4MDU4LCJpYXQiOjE3NTM3OTYyNTgsImp0aSI6ImQzMzk4MWFiZWRkNjQ0NjQ4MDRkOGNkMzk3Njk1MjQyIiwidXNlcl9pZCI6NX0.60VwZNmQlqlNHK4HJOPpa273Ib5MpDzienPrAigOaPs",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"status\": \"verified\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/users/3/change_status/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"users",
+								"3",
+								"change_status",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create empployee",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MzA3NDY0LCJpYXQiOjE3NTQzMDU2NjQsImp0aSI6IjBlZGNkZTA0ODVmZTRiM2VhNzExM2M0ZTZiZDk5Zjg3IiwidXNlcl9pZCI6NX0.huE5UQqg6g5HR9bAvV0ViA00OWMDgRgrZ_PyPqILSjg",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"first_name\": \"John\",\r\n    \"last_name\": \"Doe\",\r\n    \"role\": \"staff\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/employees/create/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"employees",
+								"create",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get employees",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MzA3NDY0LCJpYXQiOjE3NTQzMDU2NjQsImp0aSI6IjBlZGNkZTA0ODVmZTRiM2VhNzExM2M0ZTZiZDk5Zjg3IiwidXNlcl9pZCI6NX0.huE5UQqg6g5HR9bAvV0ViA00OWMDgRgrZ_PyPqILSjg",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/employees/all/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"employees",
+								"all",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update employee",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MzA3NDY0LCJpYXQiOjE3NTQzMDU2NjQsImp0aSI6IjBlZGNkZTA0ODVmZTRiM2VhNzExM2M0ZTZiZDk5Zjg3IiwidXNlcl9pZCI6NX0.huE5UQqg6g5HR9bAvV0ViA00OWMDgRgrZ_PyPqILSjg",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"first_name\": \"John\",\r\n    \"last_name\": \"Smith\",\r\n    \"role\": \"admin\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/employees/update/1/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"employees",
+								"update",
+								"1",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update employee Copy",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MzA3NDY0LCJpYXQiOjE3NTQzMDU2NjQsImp0aSI6IjBlZGNkZTA0ODVmZTRiM2VhNzExM2M0ZTZiZDk5Zjg3IiwidXNlcl9pZCI6NX0.huE5UQqg6g5HR9bAvV0ViA00OWMDgRgrZ_PyPqILSjg",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"first_name\": \"John\",\r\n    \"last_name\": \"Smith\",\r\n    \"role\": \"admin\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/employees/update/1/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"employees",
+								"update",
+								"1",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Delivery",
+			"item": [
+				{
+					"name": "deliver payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MzEzNDE0LCJpYXQiOjE3NTQzMTE2MTQsImp0aSI6IjM2M2UzMWE0ZjJkYTRmOWNhNTY4MTM3ZjZlNjc1MTc4IiwidXNlcl9pZCI6NX0.ZVFZfXRFLeoDtzAmDdMiwssHBNIRIkmgiDDgNyBikrk",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"amount\": \"1000.00\",\r\n  \"currency_from\": \"AED\",\r\n  \"currency_to\": \"USD\",\r\n  \"save_card\": true,\r\n  \"card_number\": \"1234567890123456\",\r\n  \"expiry\": \"12/25\",\r\n  \"cvv\": \"123\",\r\n  \"cardholder_name\": \"John Doe\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/delivery/payment/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"delivery",
+								"payment",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "verify face id",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MzEzNDE0LCJpYXQiOjE3NTQzMTE2MTQsImp0aSI6IjM2M2UzMWE0ZjJkYTRmOWNhNTY4MTM3ZjZlNjc1MTc4IiwidXNlcl9pZCI6NX0.ZVFZfXRFLeoDtzAmDdMiwssHBNIRIkmgiDDgNyBikrk",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"amount\": \"1000.00\",\r\n  \"currency_from\": \"AED\",\r\n  \"currency_to\": \"USD\",\r\n  \"save_card\": true,\r\n  \"card_number\": \"1234567890123456\",\r\n  \"expiry\": \"12/25\",\r\n  \"cvv\": \"123\",\r\n  \"cardholder_name\": \"John Doe\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/delivery/payment/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"delivery",
+								"payment",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "digital signature",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MzEzNDE0LCJpYXQiOjE3NTQzMTE2MTQsImp0aSI6IjM2M2UzMWE0ZjJkYTRmOWNhNTY4MTM3ZjZlNjc1MTc4IiwidXNlcl9pZCI6NX0.ZVFZfXRFLeoDtzAmDdMiwssHBNIRIkmgiDDgNyBikrk",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"signature_data\": \"SVG\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://127.0.0.1:8000/api/delivery/signature/",
+							"protocol": "http",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "8000",
+							"path": [
+								"api",
+								"delivery",
+								"signature",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

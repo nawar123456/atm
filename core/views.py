@@ -39,6 +39,8 @@ from .serializers import (
     CreateEmployeeSerializer,
     EmployeeListSerializer,
     WalletTransactionSerializer,
+    MyBalanceSerializer,
+    UserBalanceSerializer,
     haversine_distance,
     
 )
@@ -764,3 +766,42 @@ class WalletTransactionView(APIView):
                 }
             }, status=201)
         return Response(serializer.errors, status=400)
+    
+
+# views.py
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+
+class MyBalanceView(APIView):
+    """
+    عرض رصيد المستخدم الحالي (total_balance)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        serializer = MyBalanceSerializer(user)
+        return Response(serializer.data)
+
+# views.py
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+
+class GetAllBalancesView(APIView):
+    """
+    عرض جميع المستخدمين مع رصيد total_balance
+    فقط للإدارة
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request):
+        users = User.objects.all().order_by('-total_balance')
+        serializer = UserBalanceSerializer(users, many=True)
+        return Response({
+            "count": users.count(),
+            "users": serializer.data
+        })

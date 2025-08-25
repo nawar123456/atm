@@ -38,7 +38,8 @@ urlpatterns = [
     # -------------------------------
     path('api/transfers/', views.TransferTransactionView.as_view(), name='transfer-create'),
     path('api/delivery/transactions/', views.DeliveryTransactionView.as_view(), name='delivery-transactions'),
-
+    path('api/users/balances/', views.GetAllBalancesView.as_view(), name='user-balances'),
+    path('api/users/me/balance/', views.MyBalanceView.as_view(), name='my-balance'),
     # -------------------------------
     # Delivery & Verification
     # -------------------------------
