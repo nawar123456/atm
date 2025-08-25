@@ -788,3 +788,288 @@ class EmployeeListSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}".strip()
+    
+
+# serializers.py
+
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from decimal import Decimal
+from django.db import transaction as db_transaction
+from .models import User, CardDetail, Transaction
+
+User = get_user_model()
+# serializers.py
+
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from decimal import Decimal
+from django.db import transaction as db_transaction
+from django.utils import timezone
+from .models import User, CardDetail, Transaction, DeliveryLocation
+
+User = get_user_model()
+# serializers.py
+
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from decimal import Decimal
+from django.db import transaction as db_transaction
+from django.utils import timezone
+from datetime import datetime
+from .models import User, CardDetail, Transaction, DeliveryLocation
+
+User = get_user_model()
+
+class WalletTransactionSerializer(serializers.Serializer):
+    TRANSACTION_TYPES = [
+        ('deposit', 'Deposit'),
+        ('withdrawal', 'Withdrawal'),
+        ('send_money', 'Send Money'),
+        ('receive_money', 'Receive Money'),
+        ('card_to_wallet', 'Card to Wallet'),
+        ('wallet_to_card', 'Wallet to Card')
+    ]
+
+    DELIVERY_CHOICES = [
+        ('instant', 'Instant Delivery'),
+        ('scheduled', 'Scheduled Delivery')
+    ]
+
+    transaction_type = serializers.ChoiceField(choices=TRANSACTION_TYPES)
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    currency = serializers.CharField(max_length=3, default='AED')
+
+    # حقول اختيارية
+    recipient_id = serializers.IntegerField(required=False, help_text="مطلوب لـ send_money و receive_money")
+    card_id = serializers.IntegerField(required=False, help_text="مطلوب لـ card_to_wallet، wallet_to_card، withdrawal من بطاقة")
+
+    # مصدر السحب أو الإرسال
+    withdrawal_source = serializers.ChoiceField(
+        choices=[('wallet', 'Wallet'), ('card', 'Card')],
+        required=False,
+        help_text="مصدر السحب (لـ withdrawal)"
+    )
+    send_source = serializers.ChoiceField(
+        choices=[('wallet', 'Wallet'), ('card', 'Card')],
+        required=False,
+        help_text="مصدر الإرسال (لـ send_money)"
+    )
+
+    # خيارات التسليم
+    delivery_type = serializers.ChoiceField(
+        choices=DELIVERY_CHOICES,
+        default='instant'
+    )
+    delivery_date = serializers.DateField(required=False, allow_null=True)
+    delivery_time = serializers.TimeField(required=False, allow_null=True)
+
+    # الموقع
+    sender_latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+    sender_longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+    recipient_latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+    recipient_longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+
+    # التحقق من المبلغ
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("يجب أن يكون المبلغ أكبر من صفر.")
+        return value
+
+    # التحقق من الحقول حسب النوع
+    def validate(self, data):
+        user = self.context['request'].user
+        transaction_type = data['transaction_type']
+
+        # التحقق من الموقع
+        if transaction_type in ['deposit', 'withdrawal'] and not all([data.get('sender_latitude'), data.get('sender_longitude')]):
+            raise serializers.ValidationError("حقلَي 'sender_latitude' و'sender_longitude' مطلوبان.")
+
+        # التحقق من أن المستقبل ليس المرسل
+        if transaction_type == 'send_money':
+            if not data.get('recipient_id'):
+                raise serializers.ValidationError("حقل 'recipient_id' مطلوب عند إرسال الأموال.")
+            if data['recipient_id'] == user.id:
+                raise serializers.ValidationError("لا يمكنك إرسال أموال لنفسك.")
+
+        # التحقق من مصدر السحب (withdrawal)
+        if transaction_type == 'withdrawal':
+            if not data.get('withdrawal_source'):
+                raise serializers.ValidationError("حقل 'withdrawal_source' مطلوب عند السحب.")
+            if data['withdrawal_source'] == 'card':
+                if not data.get('card_id'):
+                    raise serializers.ValidationError("حقل 'card_id' مطلوب عند السحب من البطاقة.")
+                try:
+                    card = CardDetail.objects.get(id=data['card_id'], user=user)
+                    if card.balance < data['amount']:
+                        raise serializers.ValidationError("رصيد البطاقة غير كافٍ.")
+                except CardDetail.DoesNotExist:
+                    raise serializers.ValidationError("البطاقة غير موجودة أو لا تخصك.")
+            elif data['withdrawal_source'] == 'wallet':
+                if user.total_balance < data['amount']:
+                    raise serializers.ValidationError(f"رصيد المحفظة غير كافٍ. الرصيد الحالي: {user.total_balance} {data['currency']}")
+
+        # التحقق من مصدر الإرسال (send_money)
+        if transaction_type == 'send_money':
+            if not data.get('send_source'):
+                raise serializers.ValidationError("حقل 'send_source' مطلوب عند إرسال الأموال.")
+            if data['send_source'] == 'card':
+                if not data.get('card_id'):
+                    raise serializers.ValidationError("حقل 'card_id' مطلوب عند الإرسال من البطاقة.")
+                try:
+                    card = CardDetail.objects.get(id=data['card_id'], user=user)
+                    if card.balance < data['amount']:
+                        raise serializers.ValidationError("رصيد البطاقة غير كافٍ.")
+                except CardDetail.DoesNotExist:
+                    raise serializers.ValidationError("البطاقة غير موجودة أو لا تخصك.")
+            elif data['send_source'] == 'wallet':
+                if user.total_balance < data['amount']:
+                    raise serializers.ValidationError(f"رصيد المحفظة غير كافٍ. الرصيد الحالي: {user.total_balance} {data['currency']}")
+
+        # التحقق من card_id للتحويلات بين البطاقة والمحفظة
+        if transaction_type == 'card_to_wallet':
+            if not data.get('card_id'):
+                raise serializers.ValidationError("حقل 'card_id' مطلوب.")
+            try:
+                card = CardDetail.objects.get(id=data['card_id'], user=user)
+                if card.balance < data['amount']:
+                    raise serializers.ValidationError("رصيد البطاقة غير كافٍ.")
+            except CardDetail.DoesNotExist:
+                raise serializers.ValidationError("البطاقة غير موجودة أو لا تخصك.")
+
+        if transaction_type == 'wallet_to_card':
+            if not data.get('card_id'):
+                raise serializers.ValidationError("حقل 'card_id' مطلوب.")
+            try:
+                card = CardDetail.objects.get(id=data['card_id'], user=user)
+            except CardDetail.DoesNotExist:
+                raise serializers.ValidationError("البطاقة غير موجودة أو لا تخصك.")
+            if user.total_balance < data['amount']:
+                raise serializers.ValidationError(f"رصيد المحفظة غير كافٍ. الرصيد الحالي: {user.total_balance} {data['currency']}")
+
+        # التحقق من التسليم المجدول
+        if data.get('delivery_type') == 'scheduled':
+            if not data.get('delivery_date') or not data.get('delivery_time'):
+                raise serializers.ValidationError("حقلَي 'delivery_date' و'delivery_time' مطلوبان عند التسليم المجدول.")
+            # ✅ تحقق من أن التاريخ في المستقبل
+            combined_datetime = timezone.make_aware(
+                datetime.combine(data['delivery_date'], data['delivery_time'])
+            )
+            if combined_datetime <= timezone.now():
+                raise serializers.ValidationError("يجب أن يكون تاريخ التسليم في المستقبل.")
+
+        return data
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        transaction_type = validated_data['transaction_type']
+        amount = validated_data['amount']
+        currency = validated_data['currency']
+
+        # استخراج بيانات المستقبل
+        recipient = None
+        if transaction_type in ['send_money', 'receive_money']:
+            recipient_id = validated_data.get('recipient_id')
+            if recipient_id:
+                try:
+                    recipient = User.objects.get(id=recipient_id)
+                    if recipient == user:
+                        raise serializers.ValidationError("لا يمكنك إرسال أموال لنفسك.")
+                except User.DoesNotExist:
+                    raise serializers.ValidationError("المستخدم المستلم غير موجود.")
+
+        # تحديد المندوب تلقائيًا (أقرب مندوب)
+        delivery_agent = None
+        recipient_lat = validated_data.get('recipient_latitude')
+        recipient_lng = validated_data.get('recipient_longitude')
+
+        if recipient_lat and recipient_lng:
+            delivery_locations = DeliveryLocation.objects.select_related('delivery_agent').all()
+            min_distance = None
+            for location in delivery_locations:
+                if not location.delivery_agent.is_approved:
+                    continue
+                distance = haversine_distance(
+                    float(recipient_lat),
+                    float(recipient_lng),
+                    float(location.latitude),
+                    float(location.longitude)
+                )
+                if min_distance is None or distance < min_distance:
+                    min_distance = distance
+                    delivery_agent = location.delivery_agent
+
+        # تحديد حالة المعاملة
+        status = 'completed'
+        if validated_data.get('delivery_type') == 'scheduled':
+            status = 'pending_delivery'
+
+        with db_transaction.atomic():
+            if transaction_type == 'deposit':
+                user.total_balance += amount
+                user.save(update_fields=['total_balance'])
+
+            elif transaction_type == 'withdrawal':
+                if validated_data['withdrawal_source'] == 'card':
+                    card = CardDetail.objects.get(id=validated_data['card_id'], user=user)
+                    card.balance -= amount
+                    card.save(update_fields=['balance'])
+                else:
+                    user.total_balance -= amount
+                    user.save(update_fields=['total_balance'])
+
+            elif transaction_type == 'send_money':
+                if validated_data['send_source'] == 'card':
+                    card = CardDetail.objects.get(id=validated_data['card_id'], user=user)
+                    card.balance -= amount
+                    card.save(update_fields=['balance'])
+                else:
+                    user.total_balance -= amount
+                    user.save(update_fields=['total_balance'])
+
+                recipient.total_balance += amount
+                recipient.save(update_fields=['total_balance'])
+
+            elif transaction_type == 'receive_money':
+                sender = User.objects.get(id=validated_data['recipient_id'])
+                if sender.total_balance < amount:
+                    raise serializers.ValidationError("رصيد المرسل غير كافٍ.")
+                sender.total_balance -= amount
+                sender.save(update_fields=['total_balance'])
+
+                user.total_balance += amount
+                user.save(update_fields=['total_balance'])
+
+            elif transaction_type == 'card_to_wallet':
+                card = CardDetail.objects.get(id=validated_data['card_id'], user=user)
+                card.balance -= amount
+                card.save(update_fields=['balance'])
+                user.total_balance += amount
+                user.save(update_fields=['total_balance'])
+
+            elif transaction_type == 'wallet_to_card':
+                user.total_balance -= amount
+                user.save(update_fields=['total_balance'])
+                card = CardDetail.objects.get(id=validated_data['card_id'], user=user)
+                card.balance += amount
+                card.save(update_fields=['balance'])
+
+            # ✅ إنشاء المعاملة مع الحقول الجديدة
+            transaction = Transaction.objects.create(
+                user=user,
+                recipient=recipient,
+                transaction_type=transaction_type,
+                amount=amount,
+                currency_from=currency,
+                sender_latitude=validated_data.get('sender_latitude'),
+                sender_longitude=validated_data.get('sender_longitude'),
+                recipient_latitude=recipient_lat,
+                recipient_longitude=recipient_lng,
+                delivery_type=validated_data.get('delivery_type', 'instant'),
+                delivery_date=validated_data.get('delivery_date'),
+                delivery_time=validated_data.get('delivery_time'),
+                delivery_agent=delivery_agent,
+                status=status
+            )
+
+        return transaction

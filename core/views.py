@@ -38,6 +38,7 @@ from .serializers import (
     DeliveryTransactionSerializer,
     CreateEmployeeSerializer,
     EmployeeListSerializer,
+    WalletTransactionSerializer,
     haversine_distance,
     
 )
@@ -739,3 +740,27 @@ def list_employees(request):
     employees = User.objects.filter(role='staff')  # ✅ التصفية على role
     serializer = EmployeeListSerializer(employees, many=True)
     return Response(serializer.data)
+# views.py
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+
+class WalletTransactionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = WalletTransactionSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            transaction = serializer.save()
+            return Response({
+                "message": "تمت العملية بنجاح.",
+                "transaction": {
+                    "id": transaction.id,
+                    "type": transaction.transaction_type,
+                    "amount": transaction.amount,
+                    "currency": transaction.currency_from,
+                    "your_balance": request.user.total_balance
+                }
+            }, status=201)
+        return Response(serializer.errors, status=400)

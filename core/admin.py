@@ -10,7 +10,7 @@ from .models import DeliveryLocation
 class UserAdmin(BaseUserAdmin):
     # الحقول التي تُعرض في قائمة المستخدمين
     list_display = (
-        'email', 'first_name', 'last_name', 'status', 'role', 'is_staff', 'date_joined'
+        'email', 'first_name', 'last_name', 'status', 'role', 'is_staff', 'date_joined','total_balance'
     )
 
     # دعم التصفية في الجانب الأيمن
@@ -22,7 +22,7 @@ class UserAdmin(BaseUserAdmin):
     # الحقول التي تُعرض عند عرض/تعديل المستخدم
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('البيانات الشخصية', {'fields': ('first_name', 'last_name', 'phone_number', 'birth_date')}),
+        ('البيانات الشخصية', {'fields': ('first_name', 'last_name', 'phone_number', 'birth_date','total_balance')}),
         ('الهوية', {'fields': ('emirates_id', 'passport', 'face_scan','passport_number')}),
         ('الحالة والدور', {'fields': ('status', 'role')}),
         ('الأذونات', {'fields': ('is_active', 'is_staff', 'is_superuser')}),

@@ -41,6 +41,12 @@ class EmailOTP(models.Model):
 
 # --- نموذج المستخدم ---
 class User(AbstractUser):
+    total_balance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0.00,
+        help_text="الرصيد الكلي للمستخدم في النظام (محفظة رقمية)"
+    )
     passport_number = models.CharField(max_length=15, blank=True,null=True,)
 
     ROLE_CHOICES = [
@@ -110,6 +116,12 @@ class CardDetail(models.Model):
 
 # --- نموذج المعاملة ---
 class Transaction(models.Model):
+
+    DELIVERY_TYPE_CHOICES = [
+        ('instant', 'Instant Delivery'),
+        ('scheduled', 'Scheduled Delivery'),
+    ]
+
     TRANSACTION_TYPES = [
         ('withdrawal', 'Withdrawal'),
         ('deposit', 'Deposit'),
@@ -156,7 +168,11 @@ class Transaction(models.Model):
         null=True,
         related_name='transactions'
     )
-
+    delivery_date = models.DateField(null=True, blank=True)
+    delivery_time = models.TimeField(null=True, blank=True)
+    delivery_type = models.CharField(max_length=20, choices=DELIVERY_TYPE_CHOICES, default='instant')
+    scheduled_delivery_date = models.DateTimeField(null=True, blank=True)
+    
     # نوع المعاملة
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES,null=True, blank=True)
 

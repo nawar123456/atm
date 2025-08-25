@@ -4,7 +4,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from . import views
-
+from .views import WalletTransactionView
 # إنشاء الراوتر
 router = DefaultRouter()
 
@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/login/', views.LoginView.as_view(), name='login'),
     path('api/password-reset/', views.PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('api/password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('api/wallet/transaction/', WalletTransactionView.as_view(), name='wallet-transaction'),
     # urls.py
 
     path('api/login/passport/', views.PassportLoginView.as_view(), name='passport-login'),
