@@ -723,6 +723,7 @@ class DeliveryTransactionView(APIView):
 # views.py
 
 
+# views.py
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsAdminUser])
@@ -743,7 +744,6 @@ def create_employee(request):
             }
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def list_employees(request):

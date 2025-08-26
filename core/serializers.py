@@ -742,35 +742,53 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class CreateEmployeeSerializer(serializers.ModelSerializer):
+    # أضف الحقول المطلوبة صراحةً
+    email = serializers.EmailField()
+    username = serializers.CharField(max_length=150)
+    password = serializers.CharField(write_only=True, max_length=128)
+
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'role']
+        fields = [
+            'first_name',
+            'last_name',
+            'email',
+            'username',
+            'password',
+            'role'  # اختياري: يمكن إخفاؤه لاحقًا
+        ]
 
-    def validate(self, data):
-        # ✅ تأكد من أن الدور هو staff أو delivery (أو يمكن تعديله)
-        if data.get('role') not in ['staff', 'delivery']:
-            data['role'] = 'staff'  # القيمة الافتراضية
-        return data
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("البريد الإلكتروني مستخدم مسبقًا.")
+        return value
+
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("اسم المستخدم مستخدم مسبقًا.")
+        return value
+
+    def validate_role(self, value):
+        # تأكد من أن الإدارة لا يمكنها تعيين دور غير مسموح به
+        if value not in ['staff', 'delivery']:
+            return 'staff'  # القيمة الافتراضية
+        return value
 
     def create(self, validated_data):
-        # ✅ توليد username و email تلقائيًا
-        first_name = validated_data['first_name'].lower()
-        last_name = validated_data['last_name'].lower()
-        username = f"{first_name}.{last_name}"
-        email = f"{first_name}.{last_name}@company.com"
+        # استخراج كلمة المرور
+        password = validated_data.pop('password')
 
-        # ✅ تعيين كلمة مرور افتراضية (يمكن تغييرها لاحقًا)
-        password = "StaffPass123#"  # يمكن إرسالها عبر بريد لاحقًا
+        # تعيين الدور تلقائيًا إلى 'staff' (حتى لو أرسلت الإدارة 'admin')
+        validated_data['role'] = 'staff'
+        validated_data['status'] = 'verified'  # ✅ الحالة تصبح verified فورًا
 
+
+        # إنشاء المستخدم مع القيم المدخلة
         user = User.objects.create_user(
-            username=username,
-            email=email,
             password=password,
-            # role='staff',  # ✅ تعيين الدور تلقائيًا
             **validated_data
         )
         return user
-
 
 User = get_user_model()
 
