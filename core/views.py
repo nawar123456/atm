@@ -331,8 +331,19 @@ class TransactionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsApprovedUser]
 
     def get_queryset(self):
-                return Transaction.objects.filter(user=self.request.user)
+        user = self.request.user
+          # ✅ إذا كان المدير (admin) → يرى جميع المعاملات
+        if user.role == 'admin':
+            return Transaction.objects.all().order_by('-timestamp')
 
+        # ✅ إذا كان مندوب التسليم → يرى المعاملات المسندة إليه فقط
+        if user.role == 'delivery':
+            return Transaction.objects.filter(
+                delivery_agent=user
+            ).order_by('-timestamp')
+
+        # ✅ إذا كان مستخدمًا عاديًا → يرى معاملاته فقط
+        return Transaction.objects.filter(user=user).order_by('-timestamp')
     @action(detail=True, methods=['get'], url_path='track')
     def track_delivery(self, request, pk=None):
         """
