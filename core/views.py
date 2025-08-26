@@ -715,11 +715,7 @@ class DeliveryTransactionView(APIView):
         ).select_related('user', 'recipient').order_by('-timestamp')
 
         serializer = DeliveryTransactionSerializer(transactions, many=True)
-        return Response({
-            "count": transactions.count(),
-            "transactions": serializer.data
-        })
-
+        return Response(serializer.data)  # ✅ فقط القائمة، بدون count أو transactions
 # views.py
 
 

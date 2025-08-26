@@ -795,17 +795,17 @@ User = get_user_model()
 # serializers.py
 
 class EmployeeListSerializer(serializers.ModelSerializer):
-    full_name = serializers.SerializerMethodField()
+    # full_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
-            'id', 'first_name', 'last_name', 'full_name',
-            'email', 'role', 'status', 'phone_number', 'date_joined'
+            'id', 'first_name', 'last_name',
+            'email', 'role', 'status', 'phone_number', 'date_joined','username'
         ]
 
-    def get_full_name(self, obj):
-        return f"{obj.first_name} {obj.last_name}".strip()
+    # def get_full_name(self, obj):
+    #     return f"{obj.first_name} {obj.last_name}".strip()
     
 
 # serializers.py
